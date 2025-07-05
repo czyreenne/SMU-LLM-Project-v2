@@ -1,0 +1,67 @@
+name: Update Leaderboard on analysis_results.json Change
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+on:
+  push:
+    paths:
+      - 'analysis_results.json'
+  workflow_dispatch:  
+
+jobs:
+  update-leaderboard:
+    runs-on: ubuntu-latest
+    outputs:
+      artifact-path: ${{ steps.artifact-path.outputs.path }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run leaderboard update script
+        run: python leaderboard/generate.py
+
+      - name: Copy analysis_results.json to leaderboard/site if present
+        run: |
+          if [ -f analysis_results.json ]; then
+            cp analysis_results.json leaderboard/site/
+          fi
+
+      - name: Commit and push changes
+        run: |
+          git pull 
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add leaderboard/site/index.html
+          git add leaderboard/site/analysis_results.json || true
+          git commit -m "Update leaderboard based on latest analysis_results.json" || echo "No changes to commit"
+          git push
+
+  deploy-pages:
+    needs: update-leaderboard
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'leaderboard/site'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

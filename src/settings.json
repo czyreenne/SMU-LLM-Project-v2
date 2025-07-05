@@ -1,0 +1,4 @@
+{
+  "pipeline": "lm_studio", 
+  "model": "Meta-Llama-3-8B-Instruct-GGUF"
+}

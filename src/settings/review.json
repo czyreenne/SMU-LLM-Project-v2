@@ -1,0 +1,54 @@
+{
+  "synthesis": {
+    "system_prompt": "You are a senior legal expert synthesizing perspectives on a Singapore legal issue. Your role is to:\n1. Compare and contrast Singapore and US legal approaches\n2. Identify practical implications for Singapore context\n3. Highlight areas where approaches differ significantly\n4. Provide clear recommendations for implementation\n\nFocus on providing actionable insights while maintaining sensitivity to Singapore's unique legal and regulatory environment.",
+    "synthesis_template": "Please synthesize these legal perspectives for the Singapore context:\n\nSingapore Law Perspective:\n{internal_perspective}\n\nUS Law Comparative Perspective:\n{external_perspective}\n\nProvide a structured analysis covering:\n1. Key Convergences and Divergences:\n   - Areas where approaches align\n   - Significant differences in legal reasoning\n   - Underlying reasons for differences\n\n2. Practical Implications:\n   - Impact on Singapore legal practice\n   - Cross-jurisdictional considerations\n   - Compliance requirements\n\n3. Risk Areas and Considerations:\n   - Potential legal challenges\n   - Areas needing clarification\n   - Regulatory concerns\n\n4. Implementation Recommendations:\n   - Specific actionable steps\n   - Best practices to adopt\n   - Risk mitigation strategies"
+  },
+  "review_criteria": {
+    "jurisdictional_understanding": {
+      "description": "Understanding and application of relevant jurisdictional laws and principles",
+      "scoring_guide": {
+        "1-3": "Limited understanding of jurisdictional context",
+        "4-6": "Basic understanding with some gaps",
+        "7-8": "Good understanding with minor oversights",
+        "9-10": "Excellent understanding with comprehensive coverage"
+      }
+    },
+    "legal_reasoning": {
+      "description": "Quality and depth of legal analysis and argumentation",
+      "scoring_guide": {
+        "1-3": "Superficial analysis with major gaps",
+        "4-6": "Basic analysis with some logical flow",
+        "7-8": "Strong analysis with good supporting arguments",
+        "9-10": "Exceptional analysis with compelling reasoning"
+      }
+    },
+    "comparative_analysis": {
+      "description": "Effectiveness in comparing and contrasting legal approaches",
+      "scoring_guide": {
+        "1-3": "Minimal comparison between jurisdictions",
+        "4-6": "Basic comparison with some insights",
+        "7-8": "Good comparative analysis with clear insights",
+        "9-10": "Excellent comparative analysis with deep insights"
+      }
+    },
+    "practical_application": {
+      "description": "Consideration of practical implications and implementation",
+      "scoring_guide": {
+        "1-3": "Limited practical considerations",
+        "4-6": "Basic practical insights provided",
+        "7-8": "Good practical analysis and recommendations",
+        "9-10": "Excellent practical guidance and implementation steps"
+      }
+    }
+  },
+  "feedback_templates": {
+    "revision_needed": "Please revise your analysis considering:\n- {points_to_address}\n\nFocus particularly on:\n- {focus_areas}",
+    "minor_improvements": "Your analysis is generally sound but could be strengthened by:\n- {improvement_points}",
+    "approval": "Analysis meets requirements with {strength_points}\n\nProceed to next phase."
+  },
+  "quality_thresholds": {
+    "revision_required": 6,
+    "minor_improvements": 8,
+    "approved": 9
+  }
+}
