@@ -37,3 +37,4 @@ Figure*.png
 testrun.py
 src/results/*
 output
+src/vdb/*
