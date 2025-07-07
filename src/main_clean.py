@@ -65,7 +65,7 @@ def main():
         print(f"\nAvailable API services: {', '.join(available_keys)}")
 
     # Load models from settings.json
-    settings_path = os.path.join(os.path.dirname(__file__), 'settings', 'settings.json')
+    settings_path = os.path.join(os.path.dirname(__file__), 'settings.json')
     with open(settings_path, 'r') as f:
         settings = json.load(f)
     all_models: List[str] = settings.get('models', [])
@@ -141,7 +141,6 @@ def main():
         
         # Run analysis for each selected hypothetical individually
         for hypo_index in hypothetical_indices:
-            print(f"Processing hypothetical {hypo_index}...")
             run_individual_hypothetical_analysis(
                 hypo_index=hypo_index,
                 hypo_dir=hypothetical,
@@ -172,10 +171,10 @@ def main():
             p.join()
             if p.exitcode == 0:
                 completed_count += 1
-                print(f"✓ {models[i]} completed")
+                print(f"✓ Process for {models[i]} completed successfully")
             else:
                 failed_count += 1
-                print(f"✗ {models[i]} failed")
+                print(f"✗ Process for {models[i]} failed with exit code {p.exitcode}")
         
         print(f"\n=== SUMMARY ===")
         print(f"Total models: {len(models)}")

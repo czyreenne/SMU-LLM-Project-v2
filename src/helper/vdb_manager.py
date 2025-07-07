@@ -57,9 +57,12 @@ class db:
         """
         if collection_name not in self.collections:
             raise ValueError(f"Collection '{collection_name}' not accessible.")
-        where_clause = {}
+        
+        # Only add where clause if tags are provided
+        where_clause = None
         if tags:
-            where_clause["tags"] = {"$in": tags}
+            where_clause = {"tags": {"$in": tags}}
+        
         result = self.collections[collection_name].query(
             query_texts=[query_text],
             n_results=n_results,
