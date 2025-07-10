@@ -5,7 +5,7 @@ echo Legal Analysis Simulation System
 echo ================================
 
 REM PARSE COMMAND LINE ARGUMENTS
-set MODEL=deepseek-chat
+set MODEL=
 set QUESTION=
 set HYPOTHETICAL=input
 
@@ -41,23 +41,26 @@ goto parse_args
 REM If model not provided via command line, prompt the user
 if "!MODEL!"=="" (
     echo.
-    echo Select a model:
+    echo Select a model (or press Enter to run all models):
     echo 1. gpt-4o-mini
     echo 2. gpt-4o
     echo 3. claude-3-opus
     echo 4. claude-3-sonnet
-    echo 5. command-r-plus
+    echo 5. deepseek-chat
+    echo 6. Run all models
     echo.
-    set /p MODEL_CHOICE="Enter your choice (1-5, or enter a custom model name): "
+    set /p MODEL_CHOICE="Enter your choice (1-6, or press Enter for all models, or enter a custom model name): "
     
     if "!MODEL_CHOICE!"=="1" set MODEL=gpt-4o-mini
     if "!MODEL_CHOICE!"=="2" set MODEL=gpt-4o
     if "!MODEL_CHOICE!"=="3" set MODEL=claude-3-opus
     if "!MODEL_CHOICE!"=="4" set MODEL=claude-3-sonnet
-    if "!MODEL_CHOICE!"=="5" set MODEL=command-r-plus
+    if "!MODEL_CHOICE!"=="5" set MODEL=deepseek-chat
+    if "!MODEL_CHOICE!"=="6" set MODEL=
+    if "!MODEL_CHOICE!"=="" set MODEL=
     
-    REM If not a number 1-5, assume it's a custom model name
-    echo !MODEL_CHOICE! | findstr /r "^[1-5]$" >nul
+    REM If not a number 1-6 and not empty, assume it's a custom model name
+    echo !MODEL_CHOICE! | findstr /r "^[1-6]$" >nul
     if errorlevel 1 if not "!MODEL_CHOICE!"=="" set MODEL=!MODEL_CHOICE!
 )
 

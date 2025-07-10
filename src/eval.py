@@ -4,6 +4,7 @@ import nltk
 from nltk import sent_tokenize
 
 nltk.download('punkt', quiet=True)
+nltk.download('punkt_tab', quiet=True)
 
 class SummaryChecker:
     def __init__(self, model_name):
