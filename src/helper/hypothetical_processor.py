@@ -110,7 +110,7 @@ def process_hypothetical_directory(hypo_dir: str, selected_indices: Optional[Lis
     return analysis_text
 
 
-def save_individual_hypothetical_results(hypo_results: Dict, hypo_filename: str, hypo_original_name: str, shared_results_dir: str) -> None:
+def save_individual_hypothetical_results(hypo_results: Dict, hypo_filename: str, shared_results_dir: str) -> None:
     """
     Save results for a single hypothetical across all models with enhanced structure
     """
@@ -123,11 +123,9 @@ def save_individual_hypothetical_results(hypo_results: Dict, hypo_filename: str,
         print(f"Hypothetical results saved to: {hypo_json_file}")
         
         # Create individual markdown files for each model using enhanced structure
-        for model_name, model_results in hypo_results.items():
-            if model_name == "hypothetical_info":  # Skip metadata
-                continue
-            
+        for model_results in hypo_results.get("results", []):
             if isinstance(model_results, dict) and "error" not in model_results:
+                model_name = model_results.get("model", "unknown_model")
                 try:
                     # Use enhanced markdown translator to create individual files
                     create_individual_analysis_files(
@@ -140,6 +138,7 @@ def save_individual_hypothetical_results(hypo_results: Dict, hypo_filename: str,
                 except Exception as md_error:
                     print(f"Warning: Failed to create enhanced markdown for {model_name}: {str(md_error)}")
             else:
+                model_name = model_results.get("model", "unknown_model")
                 print(f"Skipping markdown generation for {model_name} due to errors in results")
                     
     except Exception as e:
@@ -162,7 +161,8 @@ def run_individual_hypothetical_analysis(hypo_index: int, hypo_dir: str, legal_q
                 "original_name": hypo_original_name,
                 "index": hypo_index,
                 "timestamp": datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            }
+            },
+            "results": []
         }
         
         # Run all models for this hypothetical in parallel
@@ -186,16 +186,19 @@ def run_individual_hypothetical_analysis(hypo_index: int, hypo_dir: str, legal_q
             completed += 1
             print(f"Completed {completed}/{len(models)} models")
         
-        # Collect results
+        # Collect results into a list
+        results_list = []
         for model in models:
             if model in results_dict:
-                hypo_results[model] = dict(results_dict[model])
+                results_list.append(dict(results_dict[model]))
             else:
-                hypo_results[model] = {"error": "Analysis failed"}
+                results_list.append({"model": model, "error": "Analysis failed", "timestamp": datetime.datetime.now().strftime("%Y%m%d_%H%M%S")})
+        
+        hypo_results["results"] = results_list
         
         # Save results for this hypothetical
         print("Saving results...")
-        save_individual_hypothetical_results(hypo_results, hypo_filename, hypo_original_name, shared_results_dir)
+        save_individual_hypothetical_results(hypo_results, hypo_filename, shared_results_dir)
         
         print(f"✓ Completed analysis for hypothetical {hypo_index}: {hypo_original_name}")
         
