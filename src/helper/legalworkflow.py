@@ -5,7 +5,7 @@ from typing import Dict, Optional, List
 from .agent_clients import AgentClient
 from .legalagents import LegalReviewPanel
 from .configloader import load_agent_config
-from .enhanced_markdown_translator import create_individual_analysis_files
+from .markdown_translator import create_individual_analysis_files
 
 
 class LegalSimulationWorkflow:
@@ -21,7 +21,6 @@ class LegalSimulationWorkflow:
 
         self.agent_configs = load_agent_config()
 
-        # Initialize agents using AgentClient
         self.agents = {}
         for agent_name, config in self.agent_configs.items():
             self.agents[agent_name] = AgentClient(
@@ -76,12 +75,13 @@ class LegalSimulationWorkflow:
         """
         # Import here to avoid circular imports
         from .hypothetical_processor import process_hypothetical_directory
-
+        print(self.agents)
         try:
             print("\nInitiating legal analysis workflow...")
 
             if self.hypothetical:
                 analysis_text = process_hypothetical_directory(self.hypothetical, self.hypothetical_indices)
+                print(f"\nLegal question: {analysis_text}")
                 analysis_results = {
                     "legal_question": None,
                     "hypothetical": analysis_text,

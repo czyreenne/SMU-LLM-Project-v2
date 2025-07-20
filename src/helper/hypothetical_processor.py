@@ -8,7 +8,7 @@ from typing import Dict, Optional, List
 from .agent_clients import AgentClient
 from .legalagents import LegalReviewPanel
 from .configloader import load_agent_config
-from .enhanced_markdown_translator import create_individual_analysis_files
+from .markdown_translator import create_individual_analysis_files
 
 
 def process_single_hypothetical(hypo_dir: str, hypo_index: int) -> tuple:
@@ -220,7 +220,7 @@ def run_single_model_for_hypothetical(model: str, analysis_text: str, api_keys: 
             hypothetical_indices=None,
             shared_results_dir=None  # Don't save individual files
         )
-        
+
         # Manually set the analysis text and run analysis
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         analysis_results = {
@@ -231,13 +231,11 @@ def run_single_model_for_hypothetical(model: str, analysis_text: str, api_keys: 
             "agent_outputs": {},
             "final_synthesis": None
         }
-        
-        # Progress for this model's steps
-        steps = ["Initializing agents", "Running internal agent", "Running external agent", "Synthesizing results"]
-        
+
         # Perform analysis for each agent
         for i, (agent_name, agent) in enumerate(workflow.agents.items()):
             agent_results = agent.perform_full_structured_analysis(question=analysis_text)
+            print(f"[{model}] Analysis completed for agent: {agent_name} (Step {i+1}/{len(workflow.agents)})")
             analysis_results["agent_outputs"][agent_name] = agent_results
 
         # Synthesize reviews

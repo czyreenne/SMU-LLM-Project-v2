@@ -14,13 +14,7 @@ def load_agent_config(config_path: str = "settings/agents.json") -> Dict[str, An
     try:
         with open(config_path, 'r') as f:
             config = json.load(f)
-            
-        # Validate required agent types
-        required_agents = {'internal', 'external'}
-        if not all(agent in config for agent in required_agents):
-            missing = required_agents - set(config.keys())
-            raise ValueError(f"Missing required agent configurations: {missing}")
-            
+             
         # Validate structure for each agent
         for agent_type, agent_config in config.items():
             required_fields = {
