@@ -300,6 +300,7 @@ class LegalReviewPanel:
         
         eval_prompt = "Evaluate the following legal analysis according to these criteria:\n\n"
         
+        print(legal_text)
         # Add criteria descriptions
         for criterion, details in self.review_config["review_criteria"].items():
             eval_prompt += f"## {criterion.replace('_', ' ').title()}\n"

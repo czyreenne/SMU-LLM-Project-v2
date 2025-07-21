@@ -249,7 +249,8 @@ def run_single_model_for_hypothetical(model: str, analysis_text: str, api_keys: 
             {"perspective": "internal_law", "review": internal_review},
             {"perspective": "external_law", "review": external_review}
         ]
-        
+        print("Reviews collected:============================================================")
+        print(reviews)
         review_panel = LegalReviewPanel(
             input_model=model,
             api_keys=api_keys,

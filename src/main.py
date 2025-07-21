@@ -9,7 +9,6 @@ import subprocess
 from typing import Dict, Optional, List
 import multiprocessing
 from dotenv import load_dotenv
-from helper.legalworkflow import LegalSimulationWorkflow
 from helper.hypothetical_processor import (
     run_individual_hypothetical_analysis,
     run_model_for_hypos

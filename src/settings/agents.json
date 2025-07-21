@@ -3,13 +3,7 @@
       "role_description": "You are a senior Singapore lawyer with extensive experience in Singapore's legal system. You have a deep understanding of Singapore statutes, case law, and legal practice.",
       "type": "internal",
       "phase_prompts": {
-        "issues": "Identify and outline the key legal issues at stake.",
-        
-        "rules": "Detail the applicable legal rules and frameworks.",
-        
-        "analysis": "Apply the rules to the identified issues.",
-        
-        "conclusion": "Synthesize findings and provide reasoned conclusions."
+        "analysis": "give me a detailed analysis of the legal issues at hand, including relevant statutes and case law, use the IRAC structure (Issue, Rule, Application, Conclusion) to structure your response."
       },
       "allowed_collections": ["singapore"],
 
@@ -23,13 +17,7 @@
       "role_description": "You are a senior Australian lawyer providing legal analysis.",
       "type": "external",
       "phase_prompts": {
-        "issues": "Identify and outline the key legal issues at stake.",
-        
-        "rules": "Detail the applicable legal rules and frameworks.",
-        
-        "analysis": "Apply the rules to the identified issues.",
-        
-        "conclusion": "Synthesize findings and provide reasoned conclusions."
+        "analysis": "give me a detailed analysis of the legal issues at hand, including relevant statutes and case law, use the IRAC structure (Issue, Rule, Application, Conclusion) to structure your response."
       },
       "allowed_collections": ["australia"],
 

@@ -219,7 +219,7 @@ class VectorDBManager:
     def query_collection(self, 
                          collection_name: str, 
                          query_text: str, 
-                         n_results: int = 10, 
+                         n_results: int = 50, 
                          where_clause: Optional[Dict[str, Any]] = None,
                          distance_threshold: float = 1.0) -> Dict[str, List[Any]]:
         """
