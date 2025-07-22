@@ -3,7 +3,6 @@ import json
 import datetime
 from typing import Dict, Optional, List
 from .agent_clients import AgentClient
-from .legalagents import LegalReviewPanel
 from .configloader import load_agent_config
 from .markdown_translator import create_individual_analysis_files
 
@@ -106,25 +105,6 @@ class LegalSimulationWorkflow:
                 print(f"\nPerforming analysis using {agent_name}...")
                 agent_results = agent.perform_full_structured_analysis(question=analysis_text)
                 analysis_results["agent_outputs"][agent_name] = agent_results
-
-            # Synthesize reviews using Internal and External outputs
-            print("\nSynthesizing perspectives...")
-            internal_review = analysis_results["agent_outputs"]["internal"].get("review", "")
-            external_review = analysis_results["agent_outputs"]["external"].get("review", "")
-
-            reviews = [
-                {"perspective": "internal_law", "review": internal_review},
-                {"perspective": "external_law", "review": external_review}
-            ]
-            
-            review_panel = LegalReviewPanel(
-                input_model=self.model_backbone,
-                api_keys=self.api_keys,
-                agent_config=self.agent_configs,
-                max_steps=len(reviews),
-            )
-            synthesis = review_panel.synthesize_reviews(reviews, source_text=analysis_text)
-            analysis_results["final_synthesis"] = synthesis
 
             # Save all results
             print("\nSaving analysis results...")

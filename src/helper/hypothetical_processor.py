@@ -6,7 +6,7 @@ import subprocess
 import multiprocessing
 from typing import Dict, Optional, List
 from .agent_clients import AgentClient
-from .legalagents import LegalReviewPanel
+from ..archive.legalagents import LegalReviewPanel
 from .configloader import load_agent_config
 from .markdown_translator import create_individual_analysis_files
 
@@ -39,75 +39,27 @@ def process_single_hypothetical(hypo_dir: str, hypo_index: int) -> tuple:
     item = extracted_data[hypo_index-1]
     
     # Create analysis text for this specific hypothetical
-    analysis_text = f"\n\n--- HYPOTHETICAL {hypo_index}: {item['file']} ---\n\n{item['scenario']}"
-    if item['questions']:
-        questions = [f"From {item['file']}: {q}" for q in item['questions']]
-        analysis_text += "\n\nQUESTIONS:\n" + "\n".join([f"{i+1}. {q}" for i, q in enumerate(questions)])
+    scenario_text = f"\n\n--- HYPOTHETICAL {hypo_index}: {item['file']} ---\n\n{item['scenario']}"
     
+    analysis_tasks = []
+    if item['questions']:
+        for i, q in enumerate(item['questions']):
+            question_text = f"From {item['file']}: {q}"
+            analysis_text = f"{scenario_text}\n\nQUESTION: {question_text}"
+            analysis_tasks.append({
+                "text": analysis_text,
+                "question_index": i + 1
+            })
+    else:
+        # If no questions, create one task with just the scenario
+        analysis_tasks.append({
+            "text": scenario_text,
+            "question_index": 0 # 0 for scenario-only analysis
+        })
+
     # Return analysis text and safe filename
     safe_filename = item['file'].replace('.pdf', '').replace(' ', '_').replace('-', '_')
-    return analysis_text, safe_filename, item['file']
-
-
-def process_hypothetical_directory(hypo_dir: str, selected_indices: Optional[List[int]] = None) -> str:
-    """
-    wrapper function that processes a directory of hypothetical pdfs and return the selected scenarios and questions
-    """
-    processed_dir = os.path.join("output")
-    os.makedirs(processed_dir, exist_ok=True)
-    print(f"\nExtracting hypotheticals from {hypo_dir}...")
-    try:
-        subprocess.run([sys.executable, "helper/extract_hypo.py", "--inpath", hypo_dir, "--outpath", processed_dir], check=True) # modified this to use current environment
-    except subprocess.CalledProcessError as e:
-        raise Exception(f"Error running extract_hypo.py: {str(e)}")
-    json_path = os.path.join(processed_dir, "extracted_data.json")
-    if not os.path.exists(json_path):
-        raise Exception(f"Expected output file {json_path} not found")
-    with open(json_path, 'r') as f:
-        extracted_data = json.load(f)
-    if not extracted_data:
-        raise Exception("No hypotheticals were extracted from the provided directory")
-    
-    # If indices are not provided (i.e., we're in a subprocess), use all hypotheticals
-    if selected_indices is None:
-        # Use all available hypotheticals
-        selected_indices = list(range(1, len(extracted_data) + 1))
-        print(f"\nUsing all available hypotheticals: {len(selected_indices)} files")
-    else:
-        print("\nAvailable hypotheticals:")
-        for i, item in enumerate(extracted_data, 1):
-            print(f"{i}. {item['file']} ({len(item['scenario'])} chars, {item['metadata']['num_pages']} pages)")
-        
-        # Interactive selection only if running in main process
-        if not selected_indices:
-            while not selected_indices:
-                try:
-                    selection = input("\nEnter the numbers of hypotheticals to analyze (comma-separated, e.g., '1,3,4') or press Enter for all: ")
-                    if not selection.strip():  # If user just presses Enter
-                        selected_indices = list(range(1, len(extracted_data) + 1))
-                        print(f"Using all available hypotheticals: {len(selected_indices)} files")
-                    else:
-                        selected_indices = [int(idx.strip()) for idx in selection.split(",")]
-                        if any(idx < 1 or idx > len(extracted_data) for idx in selected_indices): # indices validation but might not be necessary
-                            print("Invalid selection. Please enter valid numbers.")
-                            selected_indices = []
-                except (ValueError, EOFError):
-                    # Handle both invalid input and EOF (subprocess case)
-                    print("Using all available hypotheticals due to input error.")
-                    selected_indices = list(range(1, len(extracted_data) + 1))
-                    break
-    
-    combined_scenario = ""
-    combined_questions = []
-    for idx in selected_indices:
-        item = extracted_data[idx-1]
-        combined_scenario += f"\n\n--- HYPOTHETICAL {idx}: {item['file']} ---\n\n{item['scenario']}"
-        if item['questions']:
-            combined_questions.extend([f"From {item['file']}: {q}" for q in item['questions']])
-    analysis_text = combined_scenario # combine scenario and questions into single text
-    if combined_questions:
-        analysis_text += "\n\nQUESTIONS:\n" + "\n".join([f"{i+1}. {q}" for i, q in enumerate(combined_questions)])
-    return analysis_text
+    return analysis_tasks, safe_filename, item['file']
 
 
 def save_individual_hypothetical_results(hypo_results: Dict, hypo_filename: str, shared_results_dir: str) -> None:
@@ -122,24 +74,26 @@ def save_individual_hypothetical_results(hypo_results: Dict, hypo_filename: str,
             json.dump(hypo_results, f, indent=2)
         print(f"Hypothetical results saved to: {hypo_json_file}")
         
-        # Create individual markdown files for each model using enhanced structure
-        for model_results in hypo_results.get("results", []):
-            if isinstance(model_results, dict) and "error" not in model_results:
-                model_name = model_results.get("model", "unknown_model")
-                try:
-                    # Use enhanced markdown translator to create individual files
-                    create_individual_analysis_files(
-                        results=model_results,
-                        base_output_dir=shared_results_dir,
-                        model_name=model_name,
-                        hypo_name=hypo_filename
-                    )
-                    print(f"Enhanced markdown files created for {model_name}")
-                except Exception as md_error:
-                    print(f"Warning: Failed to create enhanced markdown for {model_name}: {str(md_error)}")
-            else:
-                model_name = model_results.get("model", "unknown_model")
-                print(f"Skipping markdown generation for {model_name} due to errors in results")
+        # Create individual markdown files for each model and each question
+        for question_result in hypo_results.get("results_per_question", []):
+            question_index = question_result.get("question_index", "scenario")
+            for model_results in question_result.get("models", []):
+                if isinstance(model_results, dict) and "error" not in model_results:
+                    model_name = model_results.get("model", "unknown_model")
+                    try:
+                        # Use enhanced markdown translator to create individual files
+                        create_individual_analysis_files(
+                            results=model_results,
+                            base_output_dir=shared_results_dir,
+                            model_name=model_name,
+                            hypo_name=f"{hypo_filename}_q{question_index}"
+                        )
+                        print(f"Enhanced markdown files created for {model_name} for question {question_index}")
+                    except Exception as md_error:
+                        print(f"Warning: Failed to create enhanced markdown for {model_name} for question {question_index}: {str(md_error)}")
+                else:
+                    model_name = model_results.get("model", "unknown_model")
+                    print(f"Skipping markdown generation for {model_name} for question {question_index} due to errors in results")
                     
     except Exception as e:
         print(f"Error saving hypothetical results: {str(e)}")

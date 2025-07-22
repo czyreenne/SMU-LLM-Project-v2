@@ -1,5 +1,5 @@
 from helper.vdb_manager import VectorDBManager
-from helper.legalagents import Internal, External, LegalReviewPanel
+from archive.legalagents import Internal, External, LegalReviewPanel
 
 import uuid
 
@@ -54,29 +54,44 @@ class AgentClient:
             metadatas=[metadata] if metadata else [{}],
         )
 
-    def query_documents(self, collection_name, query_text, tags=None, distance_threshold=1.0):
-        """
-        queries documents from a specific collection in the chromadb database
-        """
-        where_clause = {"tags": {"$in": tags}} if tags else None
-        return self.vdb_manager.query_collection(
-            collection_name=collection_name,
-            query_text=query_text,
-            where_clause=where_clause,
-            distance_threshold=distance_threshold
-        )["documents"]
+    ## def query(self, collection_name, query_text, tags=None, distance_threshold=1.0):
+    #     """
+    #     queries a specific collection in the chromadb database    
+    #     """
+    #     where_clause = {"tags": {"$in": tags}} if tags else None
+    #     filtered_results = self.vdb_manager.query_collection(
+    #         collection_name=collection_name,
+    #         query_text=query_text,
+    #         where_clause=where_clause,
+    #         distance_threshold=distance_threshold
+    #     )
+    #     # Retrieve documents, metadatas from the filtered results
+    #     TODO: make sense of filtered_results
+    #     return 
 
-    def query_metadatas(self, collection_name, query_text, tags=None, distance_threshold=1.0):
-        """
-        queries metadata from a specific collection in the chromadb database
-        """
-        where_clause = {"tags": {"$in": tags}} if tags else None
-        return self.vdb_manager.query_collection(
-            collection_name=collection_name,
-            query_text=query_text,
-            where_clause=where_clause,
-            distance_threshold=distance_threshold
-        )["metadatas"]
+    # def query_documents(self, collection_name, query_text, tags=None, distance_threshold=1.0):
+    #     """
+    #     queries documents from a specific collection in the chromadb database
+    #     """
+    #     where_clause = {"tags": {"$in": tags}} if tags else None
+    #     return self.vdb_manager.query_collection(
+    #         collection_name=collection_name,
+    #         query_text=query_text,
+    #         where_clause=where_clause,
+    #         distance_threshold=distance_threshold
+    #     )["documents"]
+
+    # def query_metadatas(self, collection_name, query_text, tags=None, distance_threshold=1.0):
+    #     """
+    #     queries metadata from a specific collection in the chromadb database
+    #     """
+    #     where_clause = {"tags": {"$in": tags}} if tags else None
+    #     return self.vdb_manager.query_collection(
+    #         collection_name=collection_name,
+    #         query_text=query_text,
+    #         where_clause=where_clause,
+    #         distance_threshold=distance_threshold
+    #     )["metadatas"]
 
     def perform_phase_analysis(self, question: str, phase: str, step: int = 1, feedback: str = "", temp: float = None):
         """
@@ -117,8 +132,8 @@ class AgentClient:
                 
                 if documents:
                     print(f"Successfully retrieved {len(documents)} documents from '{collection}'.")
-                    context = f"Documents from {collection}:\n" + "\n\n".join(documents)
-                    relevant_contexts.append(context)
+                    # Join case_name, chunk_text 
+                    relevant_contexts.append(documents)
                 else:
                     print(f"No relevant documents found in '{collection}' for the given question.")
             except Exception as e:
@@ -128,10 +143,12 @@ class AgentClient:
         enhanced_question = question
         if relevant_contexts:
             print("\nDocument retrieval successful. Enhancing question with retrieved context.")
+
+
             context_text = "\n\n".join(relevant_contexts)
             enhanced_question = (
                 f"Original Question: {question}\n\n"
-                f"Relevant Legal Context:\n{context_text}\n\n"
+                f"Relevant Cases and Statutes:\n{context_text}\n\n"
                 f"Based on the above context and your legal knowledge, please analyze the original question."
             )
         else:
