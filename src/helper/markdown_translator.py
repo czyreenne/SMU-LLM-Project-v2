@@ -67,6 +67,10 @@ def _create_internal_markdown(results: Dict, output_file: str, model_name: str, 
         markdown.append(f"**Timestamp**: {timestamp}")
         markdown.append(f"**Model**: {model_name}")
         markdown.append(f"**Analysis Type**: Internal Legal Perspective\n")
+        markdown.append("\n")
+        markdown.append("## Hypothetical Scenario\n")
+        scenario_part = hypothetical.split("QUESTIONS:")[0].strip() if "QUESTIONS:" in hypothetical else hypothetical
+        markdown.append(scenario_part + "\n")
     else:
         markdown.append("\n---\n") # Add a separator for new questions
 
@@ -78,13 +82,6 @@ def _create_internal_markdown(results: Dict, output_file: str, model_name: str, 
         if "QUESTIONS:" in hypothetical:
             questions_part = hypothetical.split("QUESTIONS:")[1].strip()
             markdown.append(questions_part + "\n")
-        
-        markdown.append("## Hypothetical Scenario\n")
-        scenario_part = hypothetical.split("QUESTIONS:")[0].strip() if "QUESTIONS:" in hypothetical else hypothetical
-        # Limit length for readability
-        if len(scenario_part) > 2000:
-            scenario_part = scenario_part[:1997] + "..."
-        markdown.append(scenario_part + "\n")
     
     # Internal analysis sections
     internal_data = results['agent_outputs']['internal']
@@ -121,6 +118,10 @@ def _create_external_markdown(results: Dict, output_file: str, model_name: str, 
         markdown.append(f"**Timestamp**: {timestamp}")
         markdown.append(f"**Model**: {model_name}")
         markdown.append(f"**Analysis Type**: External Legal Perspective\n")
+        markdown.append("\n")
+        markdown.append("## Hypothetical Scenario\n")
+        scenario_part = hypothetical.split("QUESTIONS:")[0].strip() if "QUESTIONS:" in hypothetical else hypothetical
+        markdown.append(scenario_part + "\n")
     else:
         markdown.append("\n---\n") # Add a separator for new questions
     
@@ -129,18 +130,10 @@ def _create_external_markdown(results: Dict, output_file: str, model_name: str, 
         markdown.append("## Legal Question\n")
         markdown.append(legal_question + "\n")
     elif hypothetical:
-        markdown.append("## Questions\n")
         if "QUESTIONS:" in hypothetical:
             questions_part = hypothetical.split("QUESTIONS:")[1].strip()
             markdown.append(questions_part + "\n")
         
-        markdown.append("## Hypothetical Scenario\n")
-        scenario_part = hypothetical.split("QUESTIONS:")[0].strip() if "QUESTIONS:" in hypothetical else hypothetical
-        # Limit length for readability
-        if len(scenario_part) > 2000:
-            scenario_part = scenario_part[:1997] + "..."
-        markdown.append(scenario_part + "\n")
-    
     # External analysis sections
     external_data = results['agent_outputs']['external']
     
@@ -186,7 +179,6 @@ def _create_review_markdown(results: Dict, output_file: str, model_name: str, ti
         question_text = legal_question[:500] + "..." if len(legal_question) > 500 else legal_question
         markdown.append(question_text + "\n")
     elif hypothetical:
-        markdown.append("## Questions\n")
         if "QUESTIONS:" in hypothetical:
             questions_part = hypothetical.split("QUESTIONS:")[1].strip()
             markdown.append(questions_part + "\n")
