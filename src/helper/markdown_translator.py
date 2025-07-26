@@ -22,7 +22,7 @@ def load_agents_config(agents_json_path: str = "agents.json") -> dict:
                     _agents_config_cache = {}
     return _agents_config_cache
 
-def create_individual_analysis_files(results: Dict[Any, Any], base_output_dir: str, model_name: str, hypo_name: str = None) -> None:
+def create_individual_analysis_files(results: Dict[Any, Any], base_output_dir: str, model_name: str, hypo_name: str = None, agent_config:dict) -> None:
     """
     Create separate markdown files for internal, external, and final review analysis.
     
@@ -49,15 +49,18 @@ def create_individual_analysis_files(results: Dict[Any, Any], base_output_dir: s
     legal_question = results.get('legal_question')
     hypothetical = results.get('hypothetical')
     
+    if agent_config is None:
+        agent_config = load_agents_config()
+
     # Generate internal analysis file
     if results.get('agent_outputs', {}).get('internal'):
         internal_file = os.path.join(model_dir, 'internal.md')
-        _create_internal_markdown(results, internal_file, model_name, timestamp, legal_question, hypothetical)
+        _create_internal_markdown(results, internal_file, model_name, timestamp, legal_question, hypothetical, agent_config)
     
     # Generate external analysis file
     if results.get('agent_outputs', {}).get('external'):
         external_file = os.path.join(model_dir, 'external.md')
-        _create_external_markdown(results, external_file, model_name, timestamp, legal_question, hypothetical)
+        _create_external_markdown(results, external_file, model_name, timestamp, legal_question, hypothetical, agent_config)
     
     # Generate review file with synthesis and metrics
     if results.get('final_synthesis'):
