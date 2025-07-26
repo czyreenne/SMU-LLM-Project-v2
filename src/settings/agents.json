@@ -3,13 +3,7 @@
       "role_description": "You are a senior Singapore lawyer with extensive experience in Singapore's legal system. You have a deep understanding of Singapore statutes, case law, and legal practice.",
       "type": "internal",
       "phase_prompts": {
-        "issues": "Identify and outline the key legal issues at stake.",
-        
-        "rules": "Detail the applicable legal rules and frameworks.",
-        
-        "analysis": "Apply the rules to the identified issues.",
-        
-        "conclusion": "Synthesize findings and provide reasoned conclusions."
+        "answer": "Answer the question following the Issue, Rule, Analysis and Conclusion framework. Start by Identifying and outlining the key legal issues. Next, Detail the applicable legal rules and frameworks. Next, Apply the rules to the identified issues. Finally, Synthesize findings and provide reasoned conclusions."
       },
       "allowed_collections": ["singapore"],
 
@@ -23,13 +17,7 @@
       "role_description": "You are a senior Australian lawyer providing legal analysis.",
       "type": "external",
       "phase_prompts": {
-        "issues": "Identify and outline the key legal issues at stake.",
-        
-        "rules": "Detail the applicable legal rules and frameworks.",
-        
-        "analysis": "Apply the rules to the identified issues.",
-        
-        "conclusion": "Synthesize findings and provide reasoned conclusions."
+        "answer": "Answer the question following the Issue, Rule, Analysis and Conclusion framework. Start by Identifying and outlining the key legal issues. Next, Detail the applicable legal rules and frameworks. Next, Apply the rules to the identified issues. Finally, Synthesize findings and provide reasoned conclusions."
       },
       "allowed_collections": ["australia"],
 

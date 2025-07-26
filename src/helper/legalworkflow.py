@@ -75,7 +75,8 @@ def save_individual_hypothetical_results(hypo_results: Dict, hypo_filename: str,
         print(f"Hypothetical results saved to: {hypo_json_file}")
         
         # Create individual markdown files for each model and each question
-        for question_result in hypo_results.get("results_per_question", []):
+        for i, question_result in enumerate(hypo_results.get("results_per_question", [])):
+            is_first = (i == 0)
             question_index = question_result.get("question_index", "scenario")
             for model_results in question_result.get("models", []):
                 if isinstance(model_results, dict) and "error" not in model_results:
@@ -86,7 +87,9 @@ def save_individual_hypothetical_results(hypo_results: Dict, hypo_filename: str,
                             results=model_results,
                             base_output_dir=shared_results_dir,
                             model_name=model_name,
-                            hypo_name=f"{hypo_filename}_q{question_index}"
+                            hypo_name=hypo_filename,
+                            agent_config=load_agent_config(),
+                            is_first_question=is_first
                         )
                         print(f"Enhanced markdown files created for {model_name} for question {question_index}")
                     except Exception as md_error:
@@ -171,15 +174,18 @@ def run_single_model_for_hypothetical(model: str, analysis_text: str, api_keys: 
     Run a single model analysis for a hypothetical and store result
     """
     try:
-        # Create workflow without saving individual files
-        workflow = LegalSimulationWorkflow(
-            legal_question="",
-            api_keys=api_keys,
-            model_backbone=model,
-            hypothetical="",  # We're passing the text directly
-            hypothetical_indices=None,
-            shared_results_dir=None  # Don't save individual files
-        )
+        # Directly create agents instead of the full workflow to avoid creating directories
+        agent_configs = load_agent_config()
+        agents = {}
+        for agent_name, config in agent_configs.items():
+            agents[agent_name] = AgentClient(
+                name=agent_name,
+                config=agent_configs,
+                agent_type=config["type"],
+                model_str=model,
+                api_keys=api_keys,
+                allowed_collections=config["allowed_collections"] 
+            )
 
         # Manually set the analysis text and run analysis
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -193,28 +199,10 @@ def run_single_model_for_hypothetical(model: str, analysis_text: str, api_keys: 
         }
 
         # Perform analysis for each agent
-        for i, (agent_name, agent) in enumerate(workflow.agents.items()):
+        for i, (agent_name, agent) in enumerate(agents.items()):
             agent_results = agent.perform_full_structured_analysis(question=analysis_text)
-            print(f"[{model}] Analysis completed for agent: {agent_name} (Step {i+1}/{len(workflow.agents)})")
+            print(f"[{model}] Analysis completed for agent: {agent_name} (Step {i+1}/{len(agents)})")
             analysis_results["agent_outputs"][agent_name] = agent_results
-
-        # # Synthesize reviews
-        # internal_review = analysis_results["agent_outputs"]["internal"].get("review", "")
-        # external_review = analysis_results["agent_outputs"]["external"].get("review", "")
-
-        # reviews = [
-        #     {"perspective": "internal_law", "review": internal_review},
-        #     {"perspective": "external_law", "review": external_review}
-        # ]
-        
-        # review_panel = LegalReviewPanel(
-        #     input_model=model,
-        #     api_keys=api_keys,
-        #     agent_config=workflow.agent_configs,
-        #     max_steps=len(reviews),
-        # )
-        # synthesis = review_panel.synthesize_reviews(reviews, source_text=analysis_text)
-        # analysis_results["final_synthesis"] = synthesis
         
         # Store results in shared dictionary
         results_dict[model] = analysis_results
