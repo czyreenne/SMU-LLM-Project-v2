@@ -292,7 +292,7 @@ def _create_review_markdown(results: Dict, output_file: str, model_name: str, ti
         f.write("\n".join(markdown))
 
 
-def convert_to_individual_files(input_file: str, base_output_dir: str, model_name: str = None, hypo_name: str = None):
+def convert_to_individual_files(input_file: str, base_output_dir: str, model_name: str = None, hypo_name: str = None, agents_config_json_path: str = "agents.json"):
     """
     Convert a legal analysis JSON file to separate internal, external, and review markdown files.
     
@@ -313,14 +313,16 @@ def convert_to_individual_files(input_file: str, base_output_dir: str, model_nam
     if not model_name:
         model_name = results.get('model', 'unknown_model')
     
+    agent_config = load_agents_config(agents_config_json_path)
+
     # Create individual analysis files
-    create_individual_analysis_files(results, base_output_dir, model_name, hypo_name)
+    create_individual_analysis_files(results, base_output_dir, model_name, hypo_name, agent_config)
     
     print(f"Created individual analysis files for {model_name} in {base_output_dir}")
 
 
 # Legacy function to maintain backward compatibility
-def convert_to_md(input_file, output_file=None):
+def convert_to_md(input_file, output_file=None, agents_config_json_path: str = "agents.json"):
     """
     Legacy function - converts to single markdown file for backward compatibility
     """
@@ -335,6 +337,8 @@ def convert_to_md(input_file, output_file=None):
         except json.JSONDecodeError:
             raise ValueError(f"Invalid JSON file: {input_file}")
     
+    agent_config = load_agents_config(agents_config_json_path)
+
     # Generate markdown content (existing implementation)
     markdown = []
     
@@ -369,24 +373,28 @@ def convert_to_md(input_file, output_file=None):
     # Process agent outputs
     if data.get("agent_outputs"):
         markdown.append("## Agent Analysis\n")
+
+        internal_phases = list(agent_config["internal"]["phase_prompts"].keys())
         
         # Process internal agent
         if "internal" in data["agent_outputs"]:
             markdown.append("### Internal Legal Perspective\n")
             
             # Show sections if available
-            for section in ["issues", "rules", "analysis", "conclusion"]:
+            for section in internal_phases:
                 if data["agent_outputs"]["internal"].get(section):
                     section_title = section.capitalize()
                     markdown.append(f"#### {section_title}\n")
                     markdown.append(data["agent_outputs"]["internal"][section] + "\n")
         
+        external_phases = list(agent_config["external"]["phase_prompts"].keys())
+
         # Process external agent
         if "external" in data["agent_outputs"]:
             markdown.append("### External Legal Perspective\n")
             
             # Show sections if available
-            for section in ["issues", "rules", "analysis", "conclusion"]:
+            for section in external_phases:
                 if data["agent_outputs"]["external"].get(section):
                     section_title = section.capitalize()
                     markdown.append(f"#### {section_title}\n")
