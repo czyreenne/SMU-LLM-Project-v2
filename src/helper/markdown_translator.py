@@ -2,6 +2,25 @@ import json
 import os
 from typing import Dict, Any, Optional
 
+_agents_config_cache = None # global cache for agent config
+
+def load_agents_config(agents_json_path: str = "agents.json") -> dict:
+    """
+    load the phase configuration from agent.json then write to cache
+    """
+    global _agents_config_cache
+    if _agents_config_cache is None:
+        if not os.path.isfile(agents_json_path):
+            print(f"Warning: agents.json not found at {agents_json_path}, using default phases.")
+            _agents_config_cache = {}
+        else:
+            with open(agents_json_path, 'r', encoding='utf-8') as f:
+                try:
+                    _agents_config_cache = json.load(f)
+                except Exception as e:
+                    print(f"Warning: Failed to load agents.json: {e}, using default phases.")
+                    _agents_config_cache = {}
+    return _agents_config_cache
 
 def create_individual_analysis_files(results: Dict[Any, Any], base_output_dir: str, model_name: str, hypo_name: str = None) -> None:
     """
@@ -47,7 +66,7 @@ def create_individual_analysis_files(results: Dict[Any, Any], base_output_dir: s
 
 
 def _create_internal_markdown(results: Dict, output_file: str, model_name: str, timestamp: str, 
-                            legal_question: Optional[str], hypothetical: Optional[str]) -> None:
+                            legal_question: Optional[str], hypothetical: Optional[str], agent_config:dict) -> None:
     """Create markdown file for internal legal analysis."""
     markdown = []
     
@@ -80,7 +99,11 @@ def _create_internal_markdown(results: Dict, output_file: str, model_name: str, 
     # Internal analysis sections
     internal_data = results['agent_outputs']['internal']
     
-    for section in ["issues", "rules", "analysis", "conclusion"]:
+    if agent_config is None:
+        agent_config = load_agents_config()
+    internal_phases = list(agent_config["internal"]["phase_prompts"].keys())
+
+    for section in internal_pases:
         if internal_data.get(section):
             section_title = section.replace("_", " ").title()
             markdown.append(f"## {section_title}\n")
@@ -92,7 +115,7 @@ def _create_internal_markdown(results: Dict, output_file: str, model_name: str, 
 
 
 def _create_external_markdown(results: Dict, output_file: str, model_name: str, timestamp: str,
-                            legal_question: Optional[str], hypothetical: Optional[str]) -> None:
+                            legal_question: Optional[str], hypothetical: Optional[str], agent_config:dict) -> None:
     """Create markdown file for external legal analysis."""
     markdown = []
     
@@ -125,7 +148,11 @@ def _create_external_markdown(results: Dict, output_file: str, model_name: str, 
     # External analysis sections
     external_data = results['agent_outputs']['external']
     
-    for section in ["issues", "rules", "analysis", "conclusion"]:
+    if agent_config is None:
+        agent_config = load_agents_config()
+    external_phases = list(agent_config["external"]["phase_prompts"].keys())
+
+    for section in external_phases:
         if external_data.get(section):
             section_title = section.replace("_", " ").title()
             markdown.append(f"## {section_title}\n")
