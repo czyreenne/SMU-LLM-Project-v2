@@ -49,6 +49,7 @@ def create_individual_analysis_files(results: Dict[Any, Any], base_output_dir: s
     legal_question = results.get('legal_question')
     hypothetical = results.get('hypothetical')
     
+    # just adding this check to be safe but technically its passed on
     if agent_config is None:
         agent_config = load_agents_config()
 
@@ -102,11 +103,12 @@ def _create_internal_markdown(results: Dict, output_file: str, model_name: str, 
     # Internal analysis sections
     internal_data = results['agent_outputs']['internal']
     
+    # just adding this check to be safe but technically its passed on
     if agent_config is None:
         agent_config = load_agents_config()
     internal_phases = list(agent_config["internal"]["phase_prompts"].keys())
 
-    for section in internal_pases:
+    for section in internal_phases:
         if internal_data.get(section):
             section_title = section.replace("_", " ").title()
             markdown.append(f"## {section_title}\n")
@@ -151,6 +153,7 @@ def _create_external_markdown(results: Dict, output_file: str, model_name: str, 
     # External analysis sections
     external_data = results['agent_outputs']['external']
     
+    # just adding this check to be safe but technically its passed on
     if agent_config is None:
         agent_config = load_agents_config()
     external_phases = list(agent_config["external"]["phase_prompts"].keys())
