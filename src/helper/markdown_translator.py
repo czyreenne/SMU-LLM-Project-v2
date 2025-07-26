@@ -1,9 +1,9 @@
 import json
 import os
 from typing import Dict, Any, Optional
+from .configloader import load_agent_config
 
-
-def create_individual_analysis_files(results: Dict[Any, Any], base_output_dir: str, model_name: str, hypo_name: str = None) -> None:
+def create_individual_analysis_files(results: Dict[Any, Any], base_output_dir: str, model_name: str, agent_config:dict, hypo_name: str = None, is_first_question: bool = True) -> None:
     """
     Create separate markdown files for internal, external, and final review analysis.
     
@@ -12,6 +12,7 @@ def create_individual_analysis_files(results: Dict[Any, Any], base_output_dir: s
         base_output_dir: Base output directory
         model_name: Name of the model used
         hypo_name: Name of the hypothetical (if applicable)
+        is_first_question: Flag to indicate if this is the first question of a hypo
     """
     # Create model-specific directory
     safe_model_name = model_name.replace("/", "_").replace("\\", "_").replace(":", "_")
@@ -30,125 +31,146 @@ def create_individual_analysis_files(results: Dict[Any, Any], base_output_dir: s
     legal_question = results.get('legal_question')
     hypothetical = results.get('hypothetical')
     
+    # just adding this check to be safe but technically its passed on
+    if agent_config is None:
+        agent_config = load_agent_config()
+
     # Generate internal analysis file
     if results.get('agent_outputs', {}).get('internal'):
         internal_file = os.path.join(model_dir, 'internal.md')
-        _create_internal_markdown(results, internal_file, model_name, timestamp, legal_question, hypothetical)
+        _create_internal_markdown(results, internal_file, model_name, timestamp, legal_question, hypothetical, agent_config, is_first_question)
     
     # Generate external analysis file
     if results.get('agent_outputs', {}).get('external'):
         external_file = os.path.join(model_dir, 'external.md')
-        _create_external_markdown(results, external_file, model_name, timestamp, legal_question, hypothetical)
+        _create_external_markdown(results, external_file, model_name, timestamp, legal_question, hypothetical, agent_config, is_first_question)
     
     # Generate review file with synthesis and metrics
     if results.get('final_synthesis'):
         review_file = os.path.join(model_dir, 'review.md')
-        _create_review_markdown(results, review_file, model_name, timestamp, legal_question, hypothetical)
+        _create_review_markdown(results, review_file, model_name, timestamp, legal_question, hypothetical, is_first_question)
 
 
 def _create_internal_markdown(results: Dict, output_file: str, model_name: str, timestamp: str, 
-                            legal_question: Optional[str], hypothetical: Optional[str]) -> None:
+                            legal_question: Optional[str], hypothetical: Optional[str], agent_config:dict, is_first_question: bool = True) -> None:
     """Create markdown file for internal legal analysis."""
+    
+    # For subsequent questions in the same hypo, append to the existing file
+    file_mode = 'w' if is_first_question else 'a'
+    
     markdown = []
     
-    # Header
-    markdown.append("# Internal Legal Analysis\n")
-    
-    # Metadata
-    markdown.append("## Metadata\n")
-    markdown.append(f"**Timestamp**: {timestamp}")
-    markdown.append(f"**Model**: {model_name}")
-    markdown.append(f"**Analysis Type**: Internal Legal Perspective\n")
-    
+    # Header and metadata only for the first question
+    if is_first_question:
+        markdown.append("# Internal Legal Analysis\n")
+        markdown.append("## Metadata\n")
+        markdown.append(f"**Timestamp**: {timestamp}")
+        markdown.append(f"**Model**: {model_name}")
+        markdown.append(f"**Analysis Type**: Internal Legal Perspective\n")
+        markdown.append("\n")
+        markdown.append("## Hypothetical Scenario\n")
+        scenario_part = hypothetical.split("QUESTIONS:")[0].strip() if "QUESTIONS:" in hypothetical else hypothetical
+        markdown.append(scenario_part + "\n")
+    else:
+        markdown.append("\n---\n") # Add a separator for new questions
+
     # Question/Hypothetical
     if legal_question:
         markdown.append("## Legal Question\n")
         markdown.append(legal_question + "\n")
     elif hypothetical:
-        markdown.append("## Questions\n")
         if "QUESTIONS:" in hypothetical:
             questions_part = hypothetical.split("QUESTIONS:")[1].strip()
             markdown.append(questions_part + "\n")
-        
-        markdown.append("## Hypothetical Scenario\n")
-        scenario_part = hypothetical.split("QUESTIONS:")[0].strip() if "QUESTIONS:" in hypothetical else hypothetical
-        # Limit length for readability
-        if len(scenario_part) > 2000:
-            scenario_part = scenario_part[:1997] + "..."
-        markdown.append(scenario_part + "\n")
     
     # Internal analysis sections
     internal_data = results['agent_outputs']['internal']
     
-    for section in ["issues", "rules", "analysis", "conclusion"]:
+    # just adding this check to be safe but technically its passed on
+    if agent_config is None:
+        agent_config = load_agent_config()
+    internal_phases = list(agent_config["internal"]["phase_prompts"].keys())
+
+    for section in internal_phases:
         if internal_data.get(section):
             section_title = section.replace("_", " ").title()
             markdown.append(f"## {section_title}\n")
             markdown.append(internal_data[section] + "\n")
     
     # Write file
-    with open(output_file, 'w', encoding='utf-8') as f:
+    with open(output_file, file_mode, encoding='utf-8') as f:
         f.write("\n".join(markdown))
 
 
 def _create_external_markdown(results: Dict, output_file: str, model_name: str, timestamp: str,
-                            legal_question: Optional[str], hypothetical: Optional[str]) -> None:
+                            legal_question: Optional[str], hypothetical: Optional[str], agent_config:dict, is_first_question: bool = True) -> None:
     """Create markdown file for external legal analysis."""
+    
+    # For subsequent questions in the same hypo, append to the existing file
+    file_mode = 'w' if is_first_question else 'a'
+
     markdown = []
     
-    # Header
-    markdown.append("# External Legal Analysis\n")
-    
-    # Metadata
-    markdown.append("## Metadata\n")
-    markdown.append(f"**Timestamp**: {timestamp}")
-    markdown.append(f"**Model**: {model_name}")
-    markdown.append(f"**Analysis Type**: External Legal Perspective\n")
+    # Header and metadata only for the first question
+    if is_first_question:
+        markdown.append("# External Legal Analysis\n")
+        markdown.append("## Metadata\n")
+        markdown.append(f"**Timestamp**: {timestamp}")
+        markdown.append(f"**Model**: {model_name}")
+        markdown.append(f"**Analysis Type**: External Legal Perspective\n")
+        markdown.append("\n")
+        markdown.append("## Hypothetical Scenario\n")
+        scenario_part = hypothetical.split("QUESTIONS:")[0].strip() if "QUESTIONS:" in hypothetical else hypothetical
+        markdown.append(scenario_part + "\n")
+    else:
+        markdown.append("\n---\n") # Add a separator for new questions
     
     # Question/Hypothetical
     if legal_question:
         markdown.append("## Legal Question\n")
         markdown.append(legal_question + "\n")
     elif hypothetical:
-        markdown.append("## Questions\n")
         if "QUESTIONS:" in hypothetical:
             questions_part = hypothetical.split("QUESTIONS:")[1].strip()
             markdown.append(questions_part + "\n")
         
-        markdown.append("## Hypothetical Scenario\n")
-        scenario_part = hypothetical.split("QUESTIONS:")[0].strip() if "QUESTIONS:" in hypothetical else hypothetical
-        # Limit length for readability
-        if len(scenario_part) > 2000:
-            scenario_part = scenario_part[:1997] + "..."
-        markdown.append(scenario_part + "\n")
-    
     # External analysis sections
     external_data = results['agent_outputs']['external']
     
-    for section in ["issues", "rules", "analysis", "conclusion"]:
+    # just adding this check to be safe but technically its passed on
+    if agent_config is None:
+        agent_config = load_agent_config()
+    external_phases = list(agent_config["external"]["phase_prompts"].keys())
+
+    for section in external_phases:
         if external_data.get(section):
             section_title = section.replace("_", " ").title()
             markdown.append(f"## {section_title}\n")
             markdown.append(external_data[section] + "\n")
     
     # Write file
-    with open(output_file, 'w', encoding='utf-8') as f:
+    with open(output_file, file_mode, encoding='utf-8') as f:
         f.write("\n".join(markdown))
 
 
 def _create_review_markdown(results: Dict, output_file: str, model_name: str, timestamp: str,
-                          legal_question: Optional[str], hypothetical: Optional[str]) -> None:
+                          legal_question: Optional[str], hypothetical: Optional[str], is_first_question: bool = True) -> None:
     """Create markdown file for final review with synthesis and metrics."""
+    
+    # For subsequent questions in the same hypo, append to the existing file
+    file_mode = 'w' if is_first_question else 'a'
+
     markdown = []
     
-    # Header
-    markdown.append("# Legal Analysis Review\n")
-    
-    # Metadata
-    markdown.append("## Metadata\n")
-    markdown.append(f"**Timestamp**: {timestamp}")
-    markdown.append(f"**Model**: {model_name}")
-    markdown.append(f"**Analysis Type**: Final Synthesis & Review\n")
+    # Header and metadata only for the first question
+    if is_first_question:
+        markdown.append("# Legal Analysis Review\n")
+        markdown.append("## Metadata\n")
+        markdown.append(f"**Timestamp**: {timestamp}")
+        markdown.append(f"**Model**: {model_name}")
+        markdown.append(f"**Analysis Type**: Final Synthesis & Review\n")
+    else:
+        markdown.append("\n---\n") # Add a separator for new questions
     
     # Question/Hypothetical (brief version)
     if legal_question:
@@ -157,7 +179,6 @@ def _create_review_markdown(results: Dict, output_file: str, model_name: str, ti
         question_text = legal_question[:500] + "..." if len(legal_question) > 500 else legal_question
         markdown.append(question_text + "\n")
     elif hypothetical:
-        markdown.append("## Questions\n")
         if "QUESTIONS:" in hypothetical:
             questions_part = hypothetical.split("QUESTIONS:")[1].strip()
             markdown.append(questions_part + "\n")
@@ -258,11 +279,11 @@ def _create_review_markdown(results: Dict, output_file: str, model_name: str, ti
         markdown.append(f"**Factual Consistency**: {consistency_status} (Score: {consistency_score:.3f})\n")
     
     # Write file
-    with open(output_file, 'w', encoding='utf-8') as f:
+    with open(output_file, file_mode, encoding='utf-8') as f:
         f.write("\n".join(markdown))
 
 
-def convert_to_individual_files(input_file: str, base_output_dir: str, model_name: str = None, hypo_name: str = None):
+def convert_to_individual_files(input_file: str, base_output_dir: str, model_name: str = None, hypo_name: str = None, agents_config_json_path: str = "../settings/agents.json"):
     """
     Convert a legal analysis JSON file to separate internal, external, and review markdown files.
     
@@ -283,14 +304,16 @@ def convert_to_individual_files(input_file: str, base_output_dir: str, model_nam
     if not model_name:
         model_name = results.get('model', 'unknown_model')
     
+    agent_config = load_agent_config(agents_config_json_path)
+
     # Create individual analysis files
-    create_individual_analysis_files(results, base_output_dir, model_name, hypo_name)
+    create_individual_analysis_files(results, base_output_dir, model_name, hypo_name, agent_config)
     
     print(f"Created individual analysis files for {model_name} in {base_output_dir}")
 
 
 # Legacy function to maintain backward compatibility
-def convert_to_md(input_file, output_file=None):
+def convert_to_md(input_file, output_file=None, agents_config_json_path: str = "../settings/agents.json"):
     """
     Legacy function - converts to single markdown file for backward compatibility
     """
@@ -305,6 +328,8 @@ def convert_to_md(input_file, output_file=None):
         except json.JSONDecodeError:
             raise ValueError(f"Invalid JSON file: {input_file}")
     
+    agent_config = load_agent_config(agents_config_json_path)
+
     # Generate markdown content (existing implementation)
     markdown = []
     
@@ -339,24 +364,28 @@ def convert_to_md(input_file, output_file=None):
     # Process agent outputs
     if data.get("agent_outputs"):
         markdown.append("## Agent Analysis\n")
+
+        internal_phases = list(agent_config["internal"]["phase_prompts"].keys())
         
         # Process internal agent
         if "internal" in data["agent_outputs"]:
             markdown.append("### Internal Legal Perspective\n")
             
             # Show sections if available
-            for section in ["issues", "rules", "analysis", "conclusion"]:
+            for section in internal_phases:
                 if data["agent_outputs"]["internal"].get(section):
                     section_title = section.capitalize()
                     markdown.append(f"#### {section_title}\n")
                     markdown.append(data["agent_outputs"]["internal"][section] + "\n")
         
+        external_phases = list(agent_config["external"]["phase_prompts"].keys())
+
         # Process external agent
         if "external" in data["agent_outputs"]:
             markdown.append("### External Legal Perspective\n")
             
             # Show sections if available
-            for section in ["issues", "rules", "analysis", "conclusion"]:
+            for section in external_phases:
                 if data["agent_outputs"]["external"].get(section):
                     section_title = section.capitalize()
                     markdown.append(f"#### {section_title}\n")
