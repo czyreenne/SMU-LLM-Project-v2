@@ -2,8 +2,27 @@ import json
 import os
 from typing import Dict, Any, Optional
 
+_agents_config_cache = None # global cache for agent config
 
-def create_individual_analysis_files(results: Dict[Any, Any], base_output_dir: str, model_name: str, hypo_name: str = None) -> None:
+def load_agents_config(agents_json_path: str = "../settings/agents.json") -> dict:
+    """
+    load the phase configuration from agent.json then write to cache
+    """
+    global _agents_config_cache
+    if _agents_config_cache is None:
+        if not os.path.isfile(agents_json_path):
+            print(f"Warning: agents.json not found at {agents_json_path}, using default phases.")
+            _agents_config_cache = {}
+        else:
+            with open(agents_json_path, 'r', encoding='utf-8') as f:
+                try:
+                    _agents_config_cache = json.load(f)
+                except Exception as e:
+                    print(f"Warning: Failed to load {agents_json_path}: {e}, using default phases.")
+                    _agents_config_cache = {}
+    return _agents_config_cache
+
+def create_individual_analysis_files(results: Dict[Any, Any], base_output_dir: str, model_name: str, hypo_name: str = None, agent_config:dict) -> None:
     """
     Create separate markdown files for internal, external, and final review analysis.
     
@@ -30,15 +49,19 @@ def create_individual_analysis_files(results: Dict[Any, Any], base_output_dir: s
     legal_question = results.get('legal_question')
     hypothetical = results.get('hypothetical')
     
+    # just adding this check to be safe but technically its passed on
+    if agent_config is None:
+        agent_config = load_agents_config()
+
     # Generate internal analysis file
     if results.get('agent_outputs', {}).get('internal'):
         internal_file = os.path.join(model_dir, 'internal.md')
-        _create_internal_markdown(results, internal_file, model_name, timestamp, legal_question, hypothetical)
+        _create_internal_markdown(results, internal_file, model_name, timestamp, legal_question, hypothetical, agent_config)
     
     # Generate external analysis file
     if results.get('agent_outputs', {}).get('external'):
         external_file = os.path.join(model_dir, 'external.md')
-        _create_external_markdown(results, external_file, model_name, timestamp, legal_question, hypothetical)
+        _create_external_markdown(results, external_file, model_name, timestamp, legal_question, hypothetical, agent_config)
     
     # Generate review file with synthesis and metrics
     if results.get('final_synthesis'):
@@ -47,7 +70,7 @@ def create_individual_analysis_files(results: Dict[Any, Any], base_output_dir: s
 
 
 def _create_internal_markdown(results: Dict, output_file: str, model_name: str, timestamp: str, 
-                            legal_question: Optional[str], hypothetical: Optional[str]) -> None:
+                            legal_question: Optional[str], hypothetical: Optional[str], agent_config:dict) -> None:
     """Create markdown file for internal legal analysis."""
     markdown = []
     
@@ -80,7 +103,12 @@ def _create_internal_markdown(results: Dict, output_file: str, model_name: str, 
     # Internal analysis sections
     internal_data = results['agent_outputs']['internal']
     
-    for section in ["issues", "rules", "analysis", "conclusion"]:
+    # just adding this check to be safe but technically its passed on
+    if agent_config is None:
+        agent_config = load_agents_config()
+    internal_phases = list(agent_config["internal"]["phase_prompts"].keys())
+
+    for section in internal_phases:
         if internal_data.get(section):
             section_title = section.replace("_", " ").title()
             markdown.append(f"## {section_title}\n")
@@ -92,7 +120,7 @@ def _create_internal_markdown(results: Dict, output_file: str, model_name: str, 
 
 
 def _create_external_markdown(results: Dict, output_file: str, model_name: str, timestamp: str,
-                            legal_question: Optional[str], hypothetical: Optional[str]) -> None:
+                            legal_question: Optional[str], hypothetical: Optional[str], agent_config:dict) -> None:
     """Create markdown file for external legal analysis."""
     markdown = []
     
@@ -125,7 +153,12 @@ def _create_external_markdown(results: Dict, output_file: str, model_name: str, 
     # External analysis sections
     external_data = results['agent_outputs']['external']
     
-    for section in ["issues", "rules", "analysis", "conclusion"]:
+    # just adding this check to be safe but technically its passed on
+    if agent_config is None:
+        agent_config = load_agents_config()
+    external_phases = list(agent_config["external"]["phase_prompts"].keys())
+
+    for section in external_phases:
         if external_data.get(section):
             section_title = section.replace("_", " ").title()
             markdown.append(f"## {section_title}\n")
@@ -262,7 +295,7 @@ def _create_review_markdown(results: Dict, output_file: str, model_name: str, ti
         f.write("\n".join(markdown))
 
 
-def convert_to_individual_files(input_file: str, base_output_dir: str, model_name: str = None, hypo_name: str = None):
+def convert_to_individual_files(input_file: str, base_output_dir: str, model_name: str = None, hypo_name: str = None, agents_config_json_path: str = "../settings/agents.json"):
     """
     Convert a legal analysis JSON file to separate internal, external, and review markdown files.
     
@@ -283,14 +316,16 @@ def convert_to_individual_files(input_file: str, base_output_dir: str, model_nam
     if not model_name:
         model_name = results.get('model', 'unknown_model')
     
+    agent_config = load_agents_config(agents_config_json_path)
+
     # Create individual analysis files
-    create_individual_analysis_files(results, base_output_dir, model_name, hypo_name)
+    create_individual_analysis_files(results, base_output_dir, model_name, hypo_name, agent_config)
     
     print(f"Created individual analysis files for {model_name} in {base_output_dir}")
 
 
 # Legacy function to maintain backward compatibility
-def convert_to_md(input_file, output_file=None):
+def convert_to_md(input_file, output_file=None, agents_config_json_path: str = "../settings/agents.json"):
     """
     Legacy function - converts to single markdown file for backward compatibility
     """
@@ -305,6 +340,8 @@ def convert_to_md(input_file, output_file=None):
         except json.JSONDecodeError:
             raise ValueError(f"Invalid JSON file: {input_file}")
     
+    agent_config = load_agents_config(agents_config_json_path)
+
     # Generate markdown content (existing implementation)
     markdown = []
     
@@ -339,24 +376,28 @@ def convert_to_md(input_file, output_file=None):
     # Process agent outputs
     if data.get("agent_outputs"):
         markdown.append("## Agent Analysis\n")
+
+        internal_phases = list(agent_config["internal"]["phase_prompts"].keys())
         
         # Process internal agent
         if "internal" in data["agent_outputs"]:
             markdown.append("### Internal Legal Perspective\n")
             
             # Show sections if available
-            for section in ["issues", "rules", "analysis", "conclusion"]:
+            for section in internal_phases:
                 if data["agent_outputs"]["internal"].get(section):
                     section_title = section.capitalize()
                     markdown.append(f"#### {section_title}\n")
                     markdown.append(data["agent_outputs"]["internal"][section] + "\n")
         
+        external_phases = list(agent_config["external"]["phase_prompts"].keys())
+
         # Process external agent
         if "external" in data["agent_outputs"]:
             markdown.append("### External Legal Perspective\n")
             
             # Show sections if available
-            for section in ["issues", "rules", "analysis", "conclusion"]:
+            for section in external_phases:
                 if data["agent_outputs"]["external"].get(section):
                     section_title = section.capitalize()
                     markdown.append(f"#### {section_title}\n")
