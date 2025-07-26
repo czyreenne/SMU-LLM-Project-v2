@@ -1,6 +1,6 @@
 from helper.vdb_manager import VectorDBManager
 from helper.legalagents import Internal, External, LegalReviewPanel
-
+from typing import List
 import uuid
 
 class AgentClient:
@@ -94,61 +94,66 @@ class AgentClient:
 
     def perform_full_structured_analysis(self, question: str, distance_threshold=1.0):
         """
-        Performs all structured phases sequentially and returns aggregated results.
-        Enhanced with relevant legal documents from vector database.
+        Performs structured analysis for each sub-question.
+        Each sub-question runs through all phases independently.
         """
-        # Retrieve relevant legal documents from available collections
         collections = list(self.vdb_manager.collections.keys())
         relevant_contexts = []
-        
-        print("\nAttempting to retrieve relevant documents from vector database...")
-        if not collections:
-            print("No collections found in the vector database.")
 
+        print("\nAttempting to retrieve relevant documents from vector database...")
         for collection in collections:
             try:
-                # The collection name is now the definitive name, no prefixing.
                 print(f"Querying collection: '{collection}'...")
                 documents = self.query_documents(
                     collection_name=collection,
                     query_text=question,
                     distance_threshold=distance_threshold
                 )
-                
                 if documents:
                     print(f"Successfully retrieved {len(documents)} documents from '{collection}'.")
                     context = f"Documents from {collection}:\n" + "\n\n".join(documents)
                     relevant_contexts.append(context)
-                else:
-                    print(f"No relevant documents found in '{collection}' for the given question.")
             except Exception as e:
                 print(f"Error querying collection {collection}: {str(e)}")
-        
-        # Create enhanced question with retrieved context
-        enhanced_question = question
-        if relevant_contexts:
-            print("\nDocument retrieval successful. Enhancing question with retrieved context.")
-            context_text = "\n\n".join(relevant_contexts)
-            enhanced_question = (
-                f"Original Question: {question}\n\n"
-                f"Relevant Legal Context:\n{context_text}\n\n"
-                f"Based on the above context and your legal knowledge, please analyze the original question."
-            )
-        else:
-            print("\nNo documents retrieved. Proceeding with original question.")
-        
-        # Perform analysis through all phases
+
+        # Enhance base question with context
+        context_text = "\n\n".join(relevant_contexts)
+        base_prompt_prefix = (
+            f"Relevant Legal Context:\n{context_text}\n\n" if context_text else ""
+        )
+
+        # 🔥 NEW: Split into subquestions
+        subquestions = self.split_into_subquestions(question)
         results = {}
-        for idx, phase in enumerate(self.phases, start=1):
-            print(f"\nPerforming '{phase}' analysis (Step {idx}/{len(self.phases)})...")
-            response = self.perform_phase_analysis(
-                question=enhanced_question,
-                phase=phase,
-                step=idx
+
+        for idx, subq in enumerate(subquestions):
+            subq_label = f"subquestion_{idx + 1}"
+            print(f"\n➡️ Analyzing {subq_label}: {subq[:100]}...")
+
+            enhanced_question = (
+                f"{base_prompt_prefix}"
+                f"Subquestion:\n{subq}\n\n"
+                f"Based on the above context and your legal knowledge, please analyze the subquestion."
             )
-            results[phase] = response
-        
+
+            phase_outputs = {}
+            for phase_idx, phase in enumerate(self.phases, start=1):
+                print(f"  - Phase '{phase}' (Step {phase_idx}/{len(self.phases)})...")
+                response = self.perform_phase_analysis(
+                    question=enhanced_question,
+                    phase=phase,
+                    step=phase_idx
+                )
+                phase_outputs[phase] = response
+
+            results[subq_label] = {
+                "subquestion_text": subq,
+                "phase_results": phase_outputs
+            }
+            print (results)
+
         return results
+
 
     def refine_analysis_with_feedback(self, initial_results: dict, feedback: str):
         """
@@ -163,3 +168,31 @@ class AgentClient:
                 feedback=feedback
             )
         return refined_results
+    
+    def split_into_subquestions(self, full_text: str) -> List[str]:
+        """
+        Splits a full hypothetical into subquestions using common legal formatting:
+        numbered (e.g. "1.") and lettered (e.g. "(a)").
+        
+        Returns a list of subquestion strings.
+        """
+        import re
+
+        full_text = full_text.strip()
+
+        # Match starts of numbered or lettered subquestions
+        pattern = re.compile(r"(^\d+\.\s|^\([a-z]\)\s)", re.IGNORECASE | re.MULTILINE)
+
+        # Find all starting positions
+        matches = list(pattern.finditer(full_text))
+        if not matches:
+            return [full_text]
+
+        subquestions = []
+        for i, match in enumerate(matches):
+            start_idx = match.start()
+            end_idx = matches[i + 1].start() if i + 1 < len(matches) else len(full_text)
+            subq = full_text[start_idx:end_idx].strip()
+            subquestions.append(subq)
+
+        return subquestions

@@ -70,67 +70,82 @@ class LegalSimulationWorkflow:
             raise Exception(f"Error saving analysis results: {str(e)}")
 
     def perform_legal_analysis(self) -> None:
-        """
-        execute the complete legal analysis workflow
-        """
-        # Import here to avoid circular imports
-        from .hypothetical_processor import process_hypothetical_directory
-        print(self.agents)
-        try:
-            print("\nInitiating legal analysis workflow...")
+        from .hypothetical_processor import process_hypothetical_directory, split_into_subquestions
 
-            if self.hypothetical:
-                analysis_text = process_hypothetical_directory(self.hypothetical, self.hypothetical_indices)
-                print(f"\nLegal question: {analysis_text}")
-                analysis_results = {
-                    "legal_question": None,
-                    "hypothetical": analysis_text,
-                    "timestamp": self.timestamp,
-                    "model": self.model_backbone,
-                    "agent_outputs": {},
-                    "final_synthesis": None
-                }
-            else:
-                analysis_text = self.legal_question
-                analysis_results = {
-                    "legal_question": analysis_text,
-                    "hypothetical": None,
-                    "timestamp": self.timestamp,
-                    "model": self.model_backbone,
-                    "agent_outputs": {},
-                    "final_synthesis": None
-                }
+        print("\nInitiating legal analysis workflow...")
 
-            # Perform analysis for each agent
+        if self.hypothetical:
+            full_text = process_hypothetical_directory(self.hypothetical, self.hypothetical_indices)
+            subquestions = split_into_subquestions(full_text)
+
+            if not self.hypothetical_indices or not all(i < len(subquestions) for i in self.hypothetical_indices):
+                raise ValueError("Invalid hypothetical index provided.")
+
+            selected_subqs = [subquestions[i] for i in self.hypothetical_indices]
+        else:
+            selected_subqs = [self.legal_question]
+
+        # Initialize result dict
+        analysis_results = {
+            "legal_question": self.legal_question if not self.hypothetical else None,
+            "hypothetical": full_text if self.hypothetical else None,
+            "timestamp": self.timestamp,
+            "model": self.model_backbone,
+            "agent_outputs": {},
+            "final_synthesis": None
+        }
+
+        for i, question in enumerate(selected_subqs):
+            print(f"\n🔎 Analyzing Subquestion {self.hypothetical_indices[i] if self.hypothetical else i}: {question}")
+
             for agent_name, agent in self.agents.items():
-                print(f"\nPerforming analysis using {agent_name}...")
-                agent_results = agent.perform_full_structured_analysis(question=analysis_text)
-                analysis_results["agent_outputs"][agent_name] = agent_results
+                if agent_name not in analysis_results["agent_outputs"]:
+                    analysis_results["agent_outputs"][agent_name] = {}
 
-            # Synthesize reviews using Internal and External outputs
-            print("\nSynthesizing perspectives...")
-            internal_review = analysis_results["agent_outputs"]["internal"].get("review", "")
-            external_review = analysis_results["agent_outputs"]["external"].get("review", "")
+                if f"subquestion_{i+1}" in analysis_results["agent_outputs"][agent_name]:
+                    print(f"⏩ Skipping already processed subquestion {i+1} for {agent_name}")
+                    continue
 
-            reviews = [
-                {"perspective": "internal_law", "review": internal_review},
-                {"perspective": "external_law", "review": external_review}
-            ]
-            
-            review_panel = LegalReviewPanel(
-                input_model=self.model_backbone,
-                api_keys=self.api_keys,
-                agent_config=self.agent_configs,
-                max_steps=len(reviews),
-            )
-            synthesis = review_panel.synthesize_reviews(reviews, source_text=analysis_text)
-            analysis_results["final_synthesis"] = synthesis
+                result = agent.perform_full_structured_analysis(question=question)
+                analysis_results["agent_outputs"][agent_name][f"subquestion_{i+1}"] = {
+                    "question": question,
+                    "phased_analysis": result
+                }
 
-            # Save all results
-            print("\nSaving analysis results...")
-            self._save_analysis_results(analysis_results)
-            
-            print(f"\n[{self.model_backbone}] Analysis complete! Results saved in: {self.results_dir}")
+        # Run synthesis once
+        print("\n🧠 Synthesizing perspectives...")
+        internal_reviews = [
+            entry["phased_analysis"].get("review", "") 
+            for entry in analysis_results["agent_outputs"].get("internal", {}).values()
+        ]
+        external_reviews = [
+            entry["phased_analysis"].get("review", "") 
+            for entry in analysis_results["agent_outputs"].get("external", {}).values()
+        ]
 
-        except Exception as e:
-            raise Exception(f"Error during legal analysis: {str(e)}")
+        review_panel = LegalReviewPanel(
+            input_model=self.model_backbone,
+            api_keys=self.api_keys,
+            agent_config=self.agent_configs,
+            max_steps=2,
+        )
+        synthesis = review_panel.synthesize_reviews([
+            {"perspective": "internal_law", "review": "\n".join(internal_reviews)},
+            {"perspective": "external_law", "review": "\n".join(external_reviews)},
+        ], source_text=full_text)
+
+        analysis_results["final_synthesis"] = synthesis
+
+        self._save_analysis_results(analysis_results)
+        print(f"\n✅ [{self.model_backbone}] Analysis complete! Results saved in: {self.results_dir}")
+
+    def flatten_agent_results(agent_results: Dict) -> str:
+        """Combine all phase results across subquestions into a single string."""
+        output = []
+        for subq_key, subq_content in agent_results.items():
+            subq_text = subq_content.get("subquestion_text", "")
+            phase_results = subq_content.get("phase_results", {})
+            output.append(f"--- {subq_key}: {subq_text} ---")
+            for phase_name, result in phase_results.items():
+                output.append(f"[{phase_name.upper()}]\n{result}")
+        return "\n\n".join(output)

@@ -9,7 +9,7 @@ from .agent_clients import AgentClient
 from .legalagents import LegalReviewPanel
 from .configloader import load_agent_config
 from .markdown_translator import create_individual_analysis_files
-
+from .hypothetical_processor import split_into_subquestions
 
 def process_single_hypothetical(hypo_dir: str, hypo_index: int) -> tuple:
     """
@@ -237,9 +237,23 @@ def run_single_model_for_hypothetical(model: str, analysis_text: str, api_keys: 
 
         # Perform analysis for each agent
         for i, (agent_name, agent) in enumerate(workflow.agents.items()):
-            agent_results = agent.perform_full_structured_analysis(question=analysis_text)
+            from .hypothetical_processor import split_into_subquestions
+
+            subquestions = split_into_subquestions(analysis_text)
+            agent_outputs = {}
+
+            for i, subq in enumerate(subquestions):
+                print(f"[{model}] Agent {agent.name}: analyzing subquestion {i+1}/{len(subquestions)}")
+                result = agent.perform_full_structured_analysis(question=subq)
+                agent_outputs[f"subquestion_{i+1}"] = {
+                    "question": subq,
+                    "phased_analysis": result
+                }
+
+            analysis_results["agent_outputs"][agent.name] = agent_outputs
+
             print(f"[{model}] Analysis completed for agent: {agent_name} (Step {i+1}/{len(workflow.agents)})")
-            analysis_results["agent_outputs"][agent_name] = agent_results
+           
 
         # Synthesize reviews
         internal_review = analysis_results["agent_outputs"]["internal"].get("review", "")
@@ -293,3 +307,9 @@ def run_model_for_hypos(model: str, legal_question: str, hypothetical: str, api_
         print(f"[{model}] Full traceback:")
         traceback.print_exc()
         print(f"[{model}] Continuing with other models...")
+
+def split_into_subquestions(text: str) -> List[str]:
+    import re
+    pattern = r"(?<=\n|^)(\d+\..*?)(?=(?:\n\d+\.|\Z))"  # handles 1. 2. etc.
+    matches = re.findall(pattern, text, re.DOTALL)
+    return [m.strip() for m in matches] if matches else [text.strip()]
