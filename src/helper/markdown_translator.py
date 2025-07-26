@@ -4,7 +4,7 @@ from typing import Dict, Any, Optional
 
 _agents_config_cache = None # global cache for agent config
 
-def load_agents_config(agents_json_path: str = "agents.json") -> dict:
+def load_agents_config(agents_json_path: str = "../settings/agents.json") -> dict:
     """
     load the phase configuration from agent.json then write to cache
     """
@@ -18,7 +18,7 @@ def load_agents_config(agents_json_path: str = "agents.json") -> dict:
                 try:
                     _agents_config_cache = json.load(f)
                 except Exception as e:
-                    print(f"Warning: Failed to load agents.json: {e}, using default phases.")
+                    print(f"Warning: Failed to load {agents_json_path}: {e}, using default phases.")
                     _agents_config_cache = {}
     return _agents_config_cache
 
@@ -295,7 +295,7 @@ def _create_review_markdown(results: Dict, output_file: str, model_name: str, ti
         f.write("\n".join(markdown))
 
 
-def convert_to_individual_files(input_file: str, base_output_dir: str, model_name: str = None, hypo_name: str = None, agents_config_json_path: str = "agents.json"):
+def convert_to_individual_files(input_file: str, base_output_dir: str, model_name: str = None, hypo_name: str = None, agents_config_json_path: str = "../settings/agents.json"):
     """
     Convert a legal analysis JSON file to separate internal, external, and review markdown files.
     
@@ -325,7 +325,7 @@ def convert_to_individual_files(input_file: str, base_output_dir: str, model_nam
 
 
 # Legacy function to maintain backward compatibility
-def convert_to_md(input_file, output_file=None, agents_config_json_path: str = "agents.json"):
+def convert_to_md(input_file, output_file=None, agents_config_json_path: str = "../settings/agents.json"):
     """
     Legacy function - converts to single markdown file for backward compatibility
     """
