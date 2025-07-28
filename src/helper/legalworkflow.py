@@ -140,7 +140,7 @@ def run_individual_hypothetical_analysis(hypo_index: int, hypo_dir: str, legal_q
             for model in models:
                 p = multiprocessing.Process(
                     target=run_single_model_for_hypothetical,
-                    args=(model, analysis_text, api_keys, results_dict)
+                    args=(model, scenario_text, question_text, api_keys, results_dict)
                 )
                 p.start()
                 processes.append(p)
@@ -204,7 +204,7 @@ def run_single_model_for_hypothetical(model: str, scenario_text: str, question_t
 
         # Perform analysis for each agent
         for i, (agent_name, agent) in enumerate(agents.items()):
-            agent_results = agent.perform_full_structured_analysis(question=analysis_text)
+            agent_results = agent.perform_full_structured_analysis(scenario=scenario_text, question=question_text)
             print(f"[{model}] Analysis completed for agent: {agent_name} (Step {i+1}/{len(agents)})")
             analysis_results["agent_outputs"][agent_name] = agent_results
         
