@@ -82,7 +82,7 @@ class BaseAgent:
         step: int,
         feedback: str = "",
         temp: Optional[float] = None
-    ) -> str:
+    ) -> dict[str, str]:
         """
         Args:
             question: The legal question to analyse
@@ -100,8 +100,8 @@ class BaseAgent:
         self._rate_limit()
 
         system_prompt = (
-            f"You are {self.role_description()}\n"
-            f"Task instructions: {self.phase_prompt(phase)}\n"
+            f"{self.role_description()}\n"
+            f"{self.phase_prompt(phase)}\n"
         )
 
         history_str = "\n".join(entry[1] for entry in self.history)
@@ -115,14 +115,14 @@ class BaseAgent:
         )
 
         user_prompt = (
-            f"History: {history_str}\n{'~' * 10}\n"
-            f"Current Step #{step}, Phase: {phase}\n"
-            f"[Objective] Your goal is to analyse the following legal question: "
+            # f"History: {history_str}\n{'~' * 10}\n"
+            # f"Current Step #{step}, Phase: {phase}\n"
+            # f"[Objective] Your goal is to analyse the following legal question: "
             f"{question}\n"
-            f"Feedback: {feedback}\nNotes: {notes_str}\n"
-            f"Your previous response was: {self.prev_comm}. "
-            f"Please ensure your new analysis adds value.\n"
-            f"Please provide your analysis below:\n"
+            # f"Feedback: {feedback}\nNotes: {notes_str}\n"
+            # f"Your previous response was: {self.prev_comm}. "
+            # f"Please ensure your new analysis adds value.\n"
+            # f"Please provide your analysis below:\n"
         )
 
         try:
@@ -141,5 +141,9 @@ class BaseAgent:
         self._manage_history(
             f"Step #{step}, Phase: {phase}, Analysis: {model_resp}"
         )
-
-        return model_resp
+        
+        return {
+            "model_resp": model_resp,
+            "system_prompt": system_prompt,
+            "user_prompt": user_prompt
+        }

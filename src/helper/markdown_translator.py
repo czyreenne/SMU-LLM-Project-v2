@@ -1,14 +1,26 @@
+import argparse
 import json
 import os
 from typing import Dict, Any, Optional
-from .configloader import load_agent_config
+try:
+    from .configloader import load_agent_config
+except ImportError:
+    # for direct script execution if markdown_translator.py is run as a standalone script
+    from helper.configloader import load_agent_config
 
-def create_individual_analysis_files(results: Dict[Any, Any], base_output_dir: str, model_name: str, agent_config:dict, hypo_name: str = None, is_first_question: bool = True) -> None:
+def create_individual_analysis_files(
+    results: Dict[Any, Any], 
+    base_output_dir: str, 
+    model_name: str, 
+    hypo_name: str = None, 
+    agent_config: dict = {}, 
+    is_first_question: bool = True
+) -> None:
     """
     Create separate markdown files for internal, external, and final review analysis.
     
     Args:
-        results: The analysis results dictionary
+        results: The analysis results dictionary for ONE model's answer to ONE question
         base_output_dir: Base output directory
         model_name: Name of the model used
         hypo_name: Name of the hypothetical (if applicable)
@@ -38,18 +50,17 @@ def create_individual_analysis_files(results: Dict[Any, Any], base_output_dir: s
     # Generate internal analysis file
     if results.get('agent_outputs', {}).get('internal'):
         internal_file = os.path.join(model_dir, 'internal.md')
-        _create_internal_markdown(results, internal_file, model_name, timestamp, legal_question, hypothetical, agent_config, is_first_question)
+        _create_markdown('internal', results, internal_file, model_name, timestamp, legal_question, hypothetical, agent_config, is_first_question)
     
     # Generate external analysis file
     if results.get('agent_outputs', {}).get('external'):
         external_file = os.path.join(model_dir, 'external.md')
-        _create_external_markdown(results, external_file, model_name, timestamp, legal_question, hypothetical, agent_config, is_first_question)
+        _create_markdown('external', results, external_file, model_name, timestamp, legal_question, hypothetical, agent_config, is_first_question)
     
     # Generate review file with synthesis and metrics
     if results.get('final_synthesis'):
         review_file = os.path.join(model_dir, 'review.md')
-        _create_review_markdown(results, review_file, model_name, timestamp, legal_question, hypothetical, is_first_question)
-
+        _create_markdown('review', results, review_file, model_name, timestamp, legal_question, hypothetical, is_first_question)
 
 def _create_internal_markdown(results: Dict, output_file: str, model_name: str, timestamp: str, 
                             legal_question: Optional[str], hypothetical: Optional[str], agent_config:dict, is_first_question: bool = True) -> None:
@@ -92,10 +103,10 @@ def _create_internal_markdown(results: Dict, output_file: str, model_name: str, 
     internal_phases = list(agent_config["internal"]["phase_prompts"].keys())
 
     for section in internal_phases:
-        if internal_data.get(section):
+        if internal_data.get(section).get('model_resp'):
             section_title = section.replace("_", " ").title()
             markdown.append(f"## {section_title}\n")
-            markdown.append(internal_data[section] + "\n")
+            markdown.append(internal_data[section]['model_resp'] + "\n")
     
     # Write file
     with open(output_file, file_mode, encoding='utf-8') as f:
@@ -143,10 +154,10 @@ def _create_external_markdown(results: Dict, output_file: str, model_name: str, 
     external_phases = list(agent_config["external"]["phase_prompts"].keys())
 
     for section in external_phases:
-        if external_data.get(section):
+        if external_data.get(section).get('model_resp'):
             section_title = section.replace("_", " ").title()
             markdown.append(f"## {section_title}\n")
-            markdown.append(external_data[section] + "\n")
+            markdown.append(external_data[section]['model_resp'] + "\n")
     
     # Write file
     with open(output_file, file_mode, encoding='utf-8') as f:
@@ -283,7 +294,7 @@ def _create_review_markdown(results: Dict, output_file: str, model_name: str, ti
         f.write("\n".join(markdown))
 
 
-def convert_to_individual_files(input_file: str, base_output_dir: str, model_name: str = None, hypo_name: str = None, agents_config_json_path: str = "../settings/agents.json"):
+def convert_json_to_individual_md_files(input_file: str, base_output_dir: str = None, model_name: str = None, hypo_name: str = None, agents_config_json_path: str = "../settings/agents.json"):
     """
     Convert a legal analysis JSON file to separate internal, external, and review markdown files.
     
@@ -293,24 +304,43 @@ def convert_to_individual_files(input_file: str, base_output_dir: str, model_nam
         model_name: Name of the model (extracted from JSON if not provided)
         hypo_name: Name of the hypothetical scenario (if applicable)
     """
-    # Read JSON file
     with open(input_file, 'r', encoding='utf-8') as f:
         try:
             results = json.load(f)
         except json.JSONDecodeError:
             raise ValueError(f"Invalid JSON file: {input_file}")
-    
-    # Extract model name if not provided
-    if not model_name:
-        model_name = results.get('model', 'unknown_model')
+        
+    if not base_output_dir:
+        base_output_dir = os.path.dirname(input_file)
+
+    hypo_name = input_file.split(os.sep)[-1].replace('.json', '') if hypo_name is None else hypo_name
     
     agent_config = load_agent_config(agents_config_json_path)
-
-    # Create individual analysis files
-    create_individual_analysis_files(results, base_output_dir, model_name, hypo_name, agent_config)
+    
+    for i, question_result in enumerate(results.get("results_per_question", [])):
+        is_first = (i == 0)
+        question_index = question_result.get("question_index", "scenario")
+        for model_results in question_result.get("models", []):
+            if isinstance(model_results, dict) and "error" not in model_results:
+                model_name = model_results.get("model", "unknown_model")
+                try:
+                    # Use enhanced markdown translator to create individual files
+                    create_individual_analysis_files(
+                        results=model_results,
+                        base_output_dir=base_output_dir,
+                        model_name=model_name,
+                        hypo_name=hypo_name,
+                        agent_config=agent_config,
+                        is_first_question=is_first
+                    )
+                    print(f"Enhanced markdown files created for {model_name} for question {question_index}")
+                except Exception as md_error:
+                    print(f"Warning: Failed to create enhanced markdown for {model_name} for question {question_index}: {str(md_error)}")
+            else:
+                model_name = model_results.get("model", "unknown_model")
+                print(f"Skipping markdown generation for {model_name} for question {question_index} due to errors in results")
     
     print(f"Created individual analysis files for {model_name} in {base_output_dir}")
-
 
 # Legacy function to maintain backward compatibility
 def convert_to_md(input_file, output_file=None, agents_config_json_path: str = "../settings/agents.json"):
@@ -376,7 +406,7 @@ def convert_to_md(input_file, output_file=None, agents_config_json_path: str = "
                 if data["agent_outputs"]["internal"].get(section):
                     section_title = section.capitalize()
                     markdown.append(f"#### {section_title}\n")
-                    markdown.append(data["agent_outputs"]["internal"][section] + "\n")
+                    markdown.append(data["agent_outputs"]["internal"][section]['model_resp'] + "\n")
         
         external_phases = list(agent_config["external"]["phase_prompts"].keys())
 
@@ -389,7 +419,7 @@ def convert_to_md(input_file, output_file=None, agents_config_json_path: str = "
                 if data["agent_outputs"]["external"].get(section):
                     section_title = section.capitalize()
                     markdown.append(f"#### {section_title}\n")
-                    markdown.append(data["agent_outputs"]["external"][section] + "\n")
+                    markdown.append(data["agent_outputs"]["external"][section]['model_resp'] + "\n")
     
     # Process final synthesis
     if data.get("final_synthesis"):
@@ -475,3 +505,145 @@ def convert_to_md(input_file, output_file=None, agents_config_json_path: str = "
     
     print(f"Converted {input_file} to {output_file}")
     return output_file
+
+def _create_markdown(
+    analysis_type: str,
+    results: Dict,
+    output_file: str,
+    model_name: str,
+    timestamp: str,
+    legal_question: Optional[str],
+    hypothetical: Optional[str],
+    agent_config: dict,
+    is_first_question: bool = True
+) -> None:
+    """
+    Create markdown file for internal, external, or review analysis.
+
+    analysis_type: "internal", "external", or "review"
+    """
+    file_mode = 'w' if is_first_question else 'a'
+    markdown = []
+
+    # Header and metadata
+    if is_first_question:
+        markdown.append(f"# {analysis_type.title()} Analysis\n")
+        analysis_label = f"{analysis_type.title()} Perspective"
+
+        markdown.append("## Metadata\n")
+        markdown.append(f"**Timestamp**: {timestamp}\n")
+        markdown.append(f"**Model**: {model_name}\n")
+        markdown.append(f"**Analysis Type**: {analysis_label}\n")
+        if analysis_type in ("internal", "external"):
+            markdown.append("\n")
+            markdown.append("## Hypothetical Scenario\n")
+            scenario_part = hypothetical.split("QUESTIONS:")[0].strip() if hypothetical and "QUESTIONS:" in hypothetical else hypothetical
+            if scenario_part:
+                markdown.append(scenario_part + "\n")
+    else:
+        markdown.append("\n---\n")  # Separator
+
+    # Question/Hypothetical
+    if legal_question:
+        markdown.append("## Legal Question\n")
+        text = legal_question
+        if analysis_type == "review" and len(text) > 500:
+            text = text[:500] + "..."
+        markdown.append(text + "\n")
+    elif hypothetical:
+        if "QUESTIONS:" in hypothetical:
+            questions_part = hypothetical.split("QUESTIONS:")[1].strip()
+            markdown.append(questions_part + "\n")
+
+    # Main content
+    if analysis_type in ("internal", "external"):
+        agent_key = analysis_type
+        data = results.get('agent_outputs', {}).get(agent_key, {})
+        if agent_config is None:
+            agent_config = load_agent_config()
+        phases = list(agent_config[agent_key]["phase_prompts"].keys())
+        for section in phases:
+            if data.get(section) and data[section].get('model_resp'):
+                section_title = section.replace("_", " ").title()
+                markdown.append(f"## {section_title}\n")
+                markdown.append(data[section]['model_resp'] + "\n")
+    elif analysis_type == "review":
+        final_synthesis = results.get('final_synthesis', {})
+        # Internal perspective summary
+        if final_synthesis.get("internal_perspective"):
+            markdown.append("## Internal Perspective Summary\n")
+            markdown.append(final_synthesis["internal_perspective"] + "\n")
+        # External perspective summary
+        if final_synthesis.get("external_perspective"):
+            markdown.append("## External Perspective Summary\n")
+            markdown.append(final_synthesis["external_perspective"] + "\n")
+        # Combined synthesis
+        if final_synthesis.get("synthesis"):
+            markdown.append("## Combined Legal Analysis\n")
+            markdown.append(final_synthesis["synthesis"] + "\n")
+        # Evaluation metrics
+        if final_synthesis.get("evaluation"):
+            markdown.append("## Evaluation Metrics\n")
+            if final_synthesis["evaluation"].get("scores"):
+                markdown.append("### Performance Scores\n")
+                markdown.append("| Criteria | Score |")
+                markdown.append("|---------|-------|")
+                for criterion, score in final_synthesis["evaluation"]["scores"].items():
+                    criterion_name = criterion.replace("_", " ").title()
+                    markdown.append(f"| {criterion_name} | {score} |")
+                if final_synthesis["evaluation"].get("average_score"):
+                    markdown.append(f"| **Average** | **{final_synthesis['evaluation']['average_score']}** |\n")
+            if final_synthesis["evaluation"].get("assessments"):
+                markdown.append("### Detailed Assessment\n")
+                for criterion, assessment in final_synthesis["evaluation"]["assessments"].items():
+                    criterion_name = criterion.replace("_", " ").title()
+                    markdown.append(f"**{criterion_name}**: {assessment}\n")
+        # Factual consistency
+        if final_synthesis.get("consistency_evaluation"):
+            markdown.append("## Factual Consistency Analysis\n")
+            markdown.append("| Metric | Value |")
+            markdown.append("|-------|-------|")
+            if final_synthesis["consistency_evaluation"].get("Entailment Score"):
+                score = final_synthesis["consistency_evaluation"]["Entailment Score"]
+                markdown.append(f"| Entailment Score | {score:.4f} |")
+            if "has_factual_inconsistencies" in final_synthesis:
+                status = "Contains inconsistencies" if final_synthesis["has_factual_inconsistencies"] else "Factually consistent"
+                markdown.append(f"| Status | {status} |")
+            if final_synthesis["consistency_evaluation"].get("Flagged Sentences"):
+                count = len(final_synthesis["consistency_evaluation"]["Flagged Sentences"])
+                markdown.append(f"| Flagged Sentences | {count} |\n")
+            if final_synthesis["consistency_evaluation"].get("Flagged Sentences") and len(final_synthesis["consistency_evaluation"]["Flagged Sentences"]) > 0:
+                markdown.append("### Flagged Sentences\n")
+                for i, sentence in enumerate(final_synthesis["consistency_evaluation"]["Flagged Sentences"], 1):
+                    markdown.append(f"{i}. \"{sentence}\"\n")
+        # Quality summary
+        markdown.append("## Analysis Quality Summary\n")
+        total_score = final_synthesis.get("evaluation", {}).get("average_score")
+        consistency_score = final_synthesis.get("consistency_evaluation", {}).get("Entailment Score")
+        if total_score:
+            if total_score >= 7:
+                quality = "Excellent"
+            elif total_score >= 6:
+                quality = "Good"
+            elif total_score >= 5:
+                quality = "Satisfactory"
+            else:
+                quality = "Needs Improvement"
+            markdown.append(f"**Overall Quality**: {quality} (Score: {total_score})\n")
+        if consistency_score:
+            consistency_status = "High" if consistency_score >= 0.9 else "Moderate" if consistency_score >= 0.7 else "Low"
+            markdown.append(f"**Factual Consistency**: {consistency_status} (Score: {consistency_score:.3f})\n")
+    print(markdown, output_file)
+    # Write file
+    with open(output_file, file_mode, encoding='utf-8') as f:
+        f.write("\n".join(markdown))
+
+if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser(description="Result JSON to Markdown Converter")
+    parser.add_argument("--inf", type=str, required=True, help="Path to results.json file")
+    parser.add_argument("--outf", type=str, default=None, help="Path to output markdown file")
+    parser.add_argument("--agentsf", type=str, default=None, help="Path to agents.json file")
+    args = parser.parse_args()
+    convert_json_to_individual_md_files(args.inf, args.outf, agents_config_json_path=args.agentsf)
+
