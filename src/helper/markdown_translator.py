@@ -537,7 +537,7 @@ def _create_markdown(
         if analysis_type in ("internal", "external"):
             markdown.append("\n")
             markdown.append("## Hypothetical Scenario\n")
-            scenario_part = hypothetical.split("QUESTIONS:")[0].strip() if hypothetical and "QUESTIONS:" in hypothetical else hypothetical
+            scenario_part = hypothetical.split("<Questions>")[0].strip() if hypothetical and "<Questions>" in hypothetical else hypothetical
             if scenario_part:
                 markdown.append(scenario_part + "\n")
     else:
@@ -551,8 +551,8 @@ def _create_markdown(
             text = text[:500] + "..."
         markdown.append(text + "\n")
     elif hypothetical:
-        if "QUESTIONS:" in hypothetical:
-            questions_part = hypothetical.split("QUESTIONS:")[1].strip()
+        if "<Questions>" in hypothetical:
+            questions_part = hypothetical.split("<Questions>")[1].strip().replace("</Questions>", "")
             markdown.append(questions_part + "\n")
 
     # Main content
