@@ -62,236 +62,236 @@ def create_individual_analysis_files(
         review_file = os.path.join(model_dir, 'review.md')
         _create_markdown('review', results, review_file, model_name, timestamp, legal_question, hypothetical, is_first_question)
 
-def _create_internal_markdown(results: Dict, output_file: str, model_name: str, timestamp: str, 
-                            legal_question: Optional[str], hypothetical: Optional[str], agent_config:dict, is_first_question: bool = True) -> None:
-    """Create markdown file for internal legal analysis."""
+# def _create_internal_markdown(results: Dict, output_file: str, model_name: str, timestamp: str, 
+#                             legal_question: Optional[str], hypothetical: Optional[str], agent_config:dict, is_first_question: bool = True) -> None:
+#     """Create markdown file for internal legal analysis."""
     
-    # For subsequent questions in the same hypo, append to the existing file
-    file_mode = 'w' if is_first_question else 'a'
+#     # For subsequent questions in the same hypo, append to the existing file
+#     file_mode = 'w' if is_first_question else 'a'
     
-    markdown = []
+#     markdown = []
     
-    # Header and metadata only for the first question
-    if is_first_question:
-        markdown.append("# Internal Legal Analysis\n")
-        markdown.append("## Metadata\n")
-        markdown.append(f"**Timestamp**: {timestamp}")
-        markdown.append(f"**Model**: {model_name}")
-        markdown.append(f"**Analysis Type**: Internal Legal Perspective\n")
-        markdown.append("\n")
-        markdown.append("## Hypothetical Scenario\n")
-        scenario_part = hypothetical.split("QUESTIONS:")[0].strip() if "QUESTIONS:" in hypothetical else hypothetical
-        markdown.append(scenario_part + "\n")
-    else:
-        markdown.append("\n---\n") # Add a separator for new questions
+#     # Header and metadata only for the first question
+#     if is_first_question:
+#         markdown.append("# Internal Legal Analysis\n")
+#         markdown.append("## Metadata\n")
+#         markdown.append(f"**Timestamp**: {timestamp}")
+#         markdown.append(f"**Model**: {model_name}")
+#         markdown.append(f"**Analysis Type**: Internal Legal Perspective\n")
+#         markdown.append("\n")
+#         markdown.append("## Hypothetical Scenario\n")
+#         scenario_part = hypothetical.split("QUESTIONS:")[0].strip() if "QUESTIONS:" in hypothetical else hypothetical
+#         markdown.append(scenario_part + "\n")
+#     else:
+#         markdown.append("\n---\n") # Add a separator for new questions
 
-    # Question/Hypothetical
-    if legal_question:
-        markdown.append("## Legal Question\n")
-        markdown.append(legal_question + "\n")
-    elif hypothetical:
-        if "QUESTIONS:" in hypothetical:
-            questions_part = hypothetical.split("QUESTIONS:")[1].strip()
-            markdown.append(questions_part + "\n")
+#     # Question/Hypothetical
+#     if legal_question:
+#         markdown.append("## Legal Question\n")
+#         markdown.append(legal_question + "\n")
+#     elif hypothetical:
+#         if "QUESTIONS:" in hypothetical:
+#             questions_part = hypothetical.split("QUESTIONS:")[1].strip()
+#             markdown.append(questions_part + "\n")
     
-    # Internal analysis sections
-    internal_data = results['agent_outputs']['internal']
+#     # Internal analysis sections
+#     internal_data = results['agent_outputs']['internal']
     
-    # just adding this check to be safe but technically its passed on
-    if agent_config is None:
-        agent_config = load_agent_config()
-    internal_phases = list(agent_config["internal"]["phase_prompts"].keys())
+#     # just adding this check to be safe but technically its passed on
+#     if agent_config is None:
+#         agent_config = load_agent_config()
+#     internal_phases = list(agent_config["internal"]["phase_prompts"].keys())
 
-    for section in internal_phases:
-        if internal_data.get(section).get('model_resp'):
-            section_title = section.replace("_", " ").title()
-            markdown.append(f"## {section_title}\n")
-            markdown.append(internal_data[section]['model_resp'] + "\n")
+#     for section in internal_phases:
+#         if internal_data.get(section).get('model_resp'):
+#             section_title = section.replace("_", " ").title()
+#             markdown.append(f"## {section_title}\n")
+#             markdown.append(internal_data[section]['model_resp'] + "\n")
     
-    # Write file
-    with open(output_file, file_mode, encoding='utf-8') as f:
-        f.write("\n".join(markdown))
+#     # Write file
+#     with open(output_file, file_mode, encoding='utf-8') as f:
+#         f.write("\n".join(markdown))
 
 
-def _create_external_markdown(results: Dict, output_file: str, model_name: str, timestamp: str,
-                            legal_question: Optional[str], hypothetical: Optional[str], agent_config:dict, is_first_question: bool = True) -> None:
-    """Create markdown file for external legal analysis."""
+# def _create_external_markdown(results: Dict, output_file: str, model_name: str, timestamp: str,
+#                             legal_question: Optional[str], hypothetical: Optional[str], agent_config:dict, is_first_question: bool = True) -> None:
+#     """Create markdown file for external legal analysis."""
     
-    # For subsequent questions in the same hypo, append to the existing file
-    file_mode = 'w' if is_first_question else 'a'
+#     # For subsequent questions in the same hypo, append to the existing file
+#     file_mode = 'w' if is_first_question else 'a'
 
-    markdown = []
+#     markdown = []
     
-    # Header and metadata only for the first question
-    if is_first_question:
-        markdown.append("# External Legal Analysis\n")
-        markdown.append("## Metadata\n")
-        markdown.append(f"**Timestamp**: {timestamp}")
-        markdown.append(f"**Model**: {model_name}")
-        markdown.append(f"**Analysis Type**: External Legal Perspective\n")
-        markdown.append("\n")
-        markdown.append("## Hypothetical Scenario\n")
-        scenario_part = hypothetical.split("QUESTIONS:")[0].strip() if "QUESTIONS:" in hypothetical else hypothetical
-        markdown.append(scenario_part + "\n")
-    else:
-        markdown.append("\n---\n") # Add a separator for new questions
+#     # Header and metadata only for the first question
+#     if is_first_question:
+#         markdown.append("# External Legal Analysis\n")
+#         markdown.append("## Metadata\n")
+#         markdown.append(f"**Timestamp**: {timestamp}")
+#         markdown.append(f"**Model**: {model_name}")
+#         markdown.append(f"**Analysis Type**: External Legal Perspective\n")
+#         markdown.append("\n")
+#         markdown.append("## Hypothetical Scenario\n")
+#         scenario_part = hypothetical.split("QUESTIONS:")[0].strip() if "QUESTIONS:" in hypothetical else hypothetical
+#         markdown.append(scenario_part + "\n")
+#     else:
+#         markdown.append("\n---\n") # Add a separator for new questions
     
-    # Question/Hypothetical
-    if legal_question:
-        markdown.append("## Legal Question\n")
-        markdown.append(legal_question + "\n")
-    elif hypothetical:
-        if "QUESTIONS:" in hypothetical:
-            questions_part = hypothetical.split("QUESTIONS:")[1].strip()
-            markdown.append(questions_part + "\n")
+#     # Question/Hypothetical
+#     if legal_question:
+#         markdown.append("## Legal Question\n")
+#         markdown.append(legal_question + "\n")
+#     elif hypothetical:
+#         if "QUESTIONS:" in hypothetical:
+#             questions_part = hypothetical.split("QUESTIONS:")[1].strip()
+#             markdown.append(questions_part + "\n")
         
-    # External analysis sections
-    external_data = results['agent_outputs']['external']
+#     # External analysis sections
+#     external_data = results['agent_outputs']['external']
     
-    # just adding this check to be safe but technically its passed on
-    if agent_config is None:
-        agent_config = load_agent_config()
-    external_phases = list(agent_config["external"]["phase_prompts"].keys())
+#     # just adding this check to be safe but technically its passed on
+#     if agent_config is None:
+#         agent_config = load_agent_config()
+#     external_phases = list(agent_config["external"]["phase_prompts"].keys())
 
-    for section in external_phases:
-        if external_data.get(section).get('model_resp'):
-            section_title = section.replace("_", " ").title()
-            markdown.append(f"## {section_title}\n")
-            markdown.append(external_data[section]['model_resp'] + "\n")
+#     for section in external_phases:
+#         if external_data.get(section).get('model_resp'):
+#             section_title = section.replace("_", " ").title()
+#             markdown.append(f"## {section_title}\n")
+#             markdown.append(external_data[section]['model_resp'] + "\n")
     
-    # Write file
-    with open(output_file, file_mode, encoding='utf-8') as f:
-        f.write("\n".join(markdown))
+#     # Write file
+#     with open(output_file, file_mode, encoding='utf-8') as f:
+#         f.write("\n".join(markdown))
 
 
-def _create_review_markdown(results: Dict, output_file: str, model_name: str, timestamp: str,
-                          legal_question: Optional[str], hypothetical: Optional[str], is_first_question: bool = True) -> None:
-    """Create markdown file for final review with synthesis and metrics."""
+# def _create_review_markdown(results: Dict, output_file: str, model_name: str, timestamp: str,
+#                           legal_question: Optional[str], hypothetical: Optional[str], is_first_question: bool = True) -> None:
+#     """Create markdown file for final review with synthesis and metrics."""
     
-    # For subsequent questions in the same hypo, append to the existing file
-    file_mode = 'w' if is_first_question else 'a'
+#     # For subsequent questions in the same hypo, append to the existing file
+#     file_mode = 'w' if is_first_question else 'a'
 
-    markdown = []
+#     markdown = []
     
-    # Header and metadata only for the first question
-    if is_first_question:
-        markdown.append("# Legal Analysis Review\n")
-        markdown.append("## Metadata\n")
-        markdown.append(f"**Timestamp**: {timestamp}")
-        markdown.append(f"**Model**: {model_name}")
-        markdown.append(f"**Analysis Type**: Final Synthesis & Review\n")
-    else:
-        markdown.append("\n---\n") # Add a separator for new questions
+#     # Header and metadata only for the first question
+#     if is_first_question:
+#         markdown.append("# Legal Analysis Review\n")
+#         markdown.append("## Metadata\n")
+#         markdown.append(f"**Timestamp**: {timestamp}")
+#         markdown.append(f"**Model**: {model_name}")
+#         markdown.append(f"**Analysis Type**: Final Synthesis & Review\n")
+#     else:
+#         markdown.append("\n---\n") # Add a separator for new questions
     
-    # Question/Hypothetical (brief version)
-    if legal_question:
-        markdown.append("## Legal Question\n")
-        # Truncate if too long for review
-        question_text = legal_question[:500] + "..." if len(legal_question) > 500 else legal_question
-        markdown.append(question_text + "\n")
-    elif hypothetical:
-        if "QUESTIONS:" in hypothetical:
-            questions_part = hypothetical.split("QUESTIONS:")[1].strip()
-            markdown.append(questions_part + "\n")
+#     # Question/Hypothetical (brief version)
+#     if legal_question:
+#         markdown.append("## Legal Question\n")
+#         # Truncate if too long for review
+#         question_text = legal_question[:500] + "..." if len(legal_question) > 500 else legal_question
+#         markdown.append(question_text + "\n")
+#     elif hypothetical:
+#         if "QUESTIONS:" in hypothetical:
+#             questions_part = hypothetical.split("QUESTIONS:")[1].strip()
+#             markdown.append(questions_part + "\n")
     
-    # Final synthesis
-    final_synthesis = results.get('final_synthesis', {})
+#     # Final synthesis
+#     final_synthesis = results.get('final_synthesis', {})
     
-    # Internal perspective summary
-    if final_synthesis.get("internal_perspective"):
-        markdown.append("## Internal Perspective Summary\n")
-        markdown.append(final_synthesis["internal_perspective"] + "\n")
+#     # Internal perspective summary
+#     if final_synthesis.get("internal_perspective"):
+#         markdown.append("## Internal Perspective Summary\n")
+#         markdown.append(final_synthesis["internal_perspective"] + "\n")
     
-    # External perspective summary
-    if final_synthesis.get("external_perspective"):
-        markdown.append("## External Perspective Summary\n")
-        markdown.append(final_synthesis["external_perspective"] + "\n")
+#     # External perspective summary
+#     if final_synthesis.get("external_perspective"):
+#         markdown.append("## External Perspective Summary\n")
+#         markdown.append(final_synthesis["external_perspective"] + "\n")
     
-    # Combined synthesis
-    if final_synthesis.get("synthesis"):
-        markdown.append("## Combined Legal Analysis\n")
-        markdown.append(final_synthesis["synthesis"] + "\n")
+#     # Combined synthesis
+#     if final_synthesis.get("synthesis"):
+#         markdown.append("## Combined Legal Analysis\n")
+#         markdown.append(final_synthesis["synthesis"] + "\n")
     
-    # Evaluation metrics
-    if final_synthesis.get("evaluation"):
-        markdown.append("## Evaluation Metrics\n")
+#     # Evaluation metrics
+#     if final_synthesis.get("evaluation"):
+#         markdown.append("## Evaluation Metrics\n")
         
-        # Scores table
-        if final_synthesis["evaluation"].get("scores"):
-            markdown.append("### Performance Scores\n")
-            markdown.append("| Criteria | Score |")
-            markdown.append("|---------|-------|")
+#         # Scores table
+#         if final_synthesis["evaluation"].get("scores"):
+#             markdown.append("### Performance Scores\n")
+#             markdown.append("| Criteria | Score |")
+#             markdown.append("|---------|-------|")
             
-            for criterion, score in final_synthesis["evaluation"]["scores"].items():
-                criterion_name = criterion.replace("_", " ").title()
-                markdown.append(f"| {criterion_name} | {score} |")
+#             for criterion, score in final_synthesis["evaluation"]["scores"].items():
+#                 criterion_name = criterion.replace("_", " ").title()
+#                 markdown.append(f"| {criterion_name} | {score} |")
             
-            # Add average score
-            if final_synthesis["evaluation"].get("average_score"):
-                markdown.append(f"| **Average** | **{final_synthesis['evaluation']['average_score']}** |\n")
+#             # Add average score
+#             if final_synthesis["evaluation"].get("average_score"):
+#                 markdown.append(f"| **Average** | **{final_synthesis['evaluation']['average_score']}** |\n")
         
-        # Detailed assessments
-        if final_synthesis["evaluation"].get("assessments"):
-            markdown.append("### Detailed Assessment\n")
-            for criterion, assessment in final_synthesis["evaluation"]["assessments"].items():
-                criterion_name = criterion.replace("_", " ").title()
-                markdown.append(f"**{criterion_name}**: {assessment}\n")
+#         # Detailed assessments
+#         if final_synthesis["evaluation"].get("assessments"):
+#             markdown.append("### Detailed Assessment\n")
+#             for criterion, assessment in final_synthesis["evaluation"]["assessments"].items():
+#                 criterion_name = criterion.replace("_", " ").title()
+#                 markdown.append(f"**{criterion_name}**: {assessment}\n")
     
-    # Factual consistency
-    if final_synthesis.get("consistency_evaluation"):
-        markdown.append("## Factual Consistency Analysis\n")
+#     # Factual consistency
+#     if final_synthesis.get("consistency_evaluation"):
+#         markdown.append("## Factual Consistency Analysis\n")
         
-        # Consistency metrics table
-        markdown.append("| Metric | Value |")
-        markdown.append("|-------|-------|")
+#         # Consistency metrics table
+#         markdown.append("| Metric | Value |")
+#         markdown.append("|-------|-------|")
         
-        # Entailment score
-        if final_synthesis["consistency_evaluation"].get("Entailment Score"):
-            score = final_synthesis["consistency_evaluation"]["Entailment Score"]
-            markdown.append(f"| Entailment Score | {score:.4f} |")
+#         # Entailment score
+#         if final_synthesis["consistency_evaluation"].get("Entailment Score"):
+#             score = final_synthesis["consistency_evaluation"]["Entailment Score"]
+#             markdown.append(f"| Entailment Score | {score:.4f} |")
         
-        # Status
-        if "has_factual_inconsistencies" in final_synthesis:
-            status = "Contains inconsistencies" if final_synthesis["has_factual_inconsistencies"] else "Factually consistent"
-            markdown.append(f"| Status | {status} |")
+#         # Status
+#         if "has_factual_inconsistencies" in final_synthesis:
+#             status = "Contains inconsistencies" if final_synthesis["has_factual_inconsistencies"] else "Factually consistent"
+#             markdown.append(f"| Status | {status} |")
         
-        # Flagged sentences count
-        if final_synthesis["consistency_evaluation"].get("Flagged Sentences"):
-            count = len(final_synthesis["consistency_evaluation"]["Flagged Sentences"])
-            markdown.append(f"| Flagged Sentences | {count} |\n")
+#         # Flagged sentences count
+#         if final_synthesis["consistency_evaluation"].get("Flagged Sentences"):
+#             count = len(final_synthesis["consistency_evaluation"]["Flagged Sentences"])
+#             markdown.append(f"| Flagged Sentences | {count} |\n")
         
-        # List flagged sentences
-        if final_synthesis["consistency_evaluation"].get("Flagged Sentences") and len(final_synthesis["consistency_evaluation"]["Flagged Sentences"]) > 0:
-            markdown.append("### Flagged Sentences\n")
-            for i, sentence in enumerate(final_synthesis["consistency_evaluation"]["Flagged Sentences"], 1):
-                markdown.append(f"{i}. \"{sentence}\"\n")
+#         # List flagged sentences
+#         if final_synthesis["consistency_evaluation"].get("Flagged Sentences") and len(final_synthesis["consistency_evaluation"]["Flagged Sentences"]) > 0:
+#             markdown.append("### Flagged Sentences\n")
+#             for i, sentence in enumerate(final_synthesis["consistency_evaluation"]["Flagged Sentences"], 1):
+#                 markdown.append(f"{i}. \"{sentence}\"\n")
     
-    # Quality summary
-    markdown.append("## Analysis Quality Summary\n")
+#     # Quality summary
+#     markdown.append("## Analysis Quality Summary\n")
     
-    # Create a summary based on available metrics
-    total_score = final_synthesis.get("evaluation", {}).get("average_score")
-    consistency_score = final_synthesis.get("consistency_evaluation", {}).get("Entailment Score")
+#     # Create a summary based on available metrics
+#     total_score = final_synthesis.get("evaluation", {}).get("average_score")
+#     consistency_score = final_synthesis.get("consistency_evaluation", {}).get("Entailment Score")
     
-    if total_score:
-        if total_score >= 7:
-            quality = "Excellent"
-        elif total_score >= 6:
-            quality = "Good"
-        elif total_score >= 5:
-            quality = "Satisfactory"
-        else:
-            quality = "Needs Improvement"
+#     if total_score:
+#         if total_score >= 7:
+#             quality = "Excellent"
+#         elif total_score >= 6:
+#             quality = "Good"
+#         elif total_score >= 5:
+#             quality = "Satisfactory"
+#         else:
+#             quality = "Needs Improvement"
         
-        markdown.append(f"**Overall Quality**: {quality} (Score: {total_score})\n")
+#         markdown.append(f"**Overall Quality**: {quality} (Score: {total_score})\n")
     
-    if consistency_score:
-        consistency_status = "High" if consistency_score >= 0.9 else "Moderate" if consistency_score >= 0.7 else "Low"
-        markdown.append(f"**Factual Consistency**: {consistency_status} (Score: {consistency_score:.3f})\n")
+#     if consistency_score:
+#         consistency_status = "High" if consistency_score >= 0.9 else "Moderate" if consistency_score >= 0.7 else "Low"
+#         markdown.append(f"**Factual Consistency**: {consistency_status} (Score: {consistency_score:.3f})\n")
     
-    # Write file
-    with open(output_file, file_mode, encoding='utf-8') as f:
-        f.write("\n".join(markdown))
+#     # Write file
+#     with open(output_file, file_mode, encoding='utf-8') as f:
+#         f.write("\n".join(markdown))
 
 
 def convert_json_to_individual_md_files(input_file: str, base_output_dir: str = None, model_name: str = None, hypo_name: str = None, agents_config_json_path: str = "../settings/agents.json"):
