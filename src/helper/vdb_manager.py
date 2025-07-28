@@ -255,11 +255,7 @@ class VectorDBManager:
         # Sort by case_date if available
         filtered_results.sort(key=lambda x: x[1].get("case_date", ""), reverse=True)
 
-        return {
-            "documents": [item[0] for item in filtered_results],
-            "metadatas": [item[1] for item in filtered_results],
-            "distances": [item[2] for item in filtered_results]
-        }
+        return filtered_results
 
     def load_legal_cases_from_jsonl(self,
                                     jsonl_file_path: str,

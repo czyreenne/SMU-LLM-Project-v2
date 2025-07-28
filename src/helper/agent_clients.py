@@ -1,10 +1,10 @@
 from helper.vdb_manager import VectorDBManager
-from helper.legalagents import Internal, External, LegalReviewPanel
+from helper.base_agent import BaseAgent
 
 import uuid
 
 class AgentClient:
-    def __init__(self, name, config, agent_type="internal", model_str="gpt-4o-mini", api_keys=None, allowed_collections=None):
+    def __init__(self, name, config, agent_type, model_str="gpt-4o-mini", api_keys=None, allowed_collections=None):
         """
         initializes an agentclient with access to specific collections in the chromadb database
         """
@@ -19,29 +19,19 @@ class AgentClient:
         else:
             client_name = name # Fallback to the agent's name
 
-        agent_class = Internal if agent_type.lower() == 'internal' else External
         self.name = name
-        self.agent = agent_class(
+        self.agent = BaseAgent(
+            agent_type=agent_type,
             input_model=model_str,
-            api_keys=api_keys,
             config=config,
+            api_keys=api_keys
         )
         self.vdb_manager = VectorDBManager(
             client_name=client_name, 
             allowed_collections=allowed_collections,
             use_openai=True
         )
-        self.phases = self.agent.phases  
-        # @zhiyi
-        # if im not wrong the phases are currently hardcoded within legalagents right if 
-        # we want can add it as an additional Aparam to the AgentClient constructor
-        # ~ gong
-        # Done
-    def query(self, collection_name, query_text, **kwargs):
-        """
-        queries a specific collection in the chromadb database
-        """
-        return self.vdb_manager.query_collection(collection_name=collection_name, query_text=query_text, **kwargs)
+        self.phases = self.agent.phases
 
     def add_document(self, collection_name, document, metadata=None, id=None):
         """
@@ -54,29 +44,36 @@ class AgentClient:
             metadatas=[metadata] if metadata else [{}],
         )
 
-    def query_documents(self, collection_name, query_text, tags=None, distance_threshold=1.0):
+    def query_vdb(self, collection_name, query_text, tags=None, distance_threshold=1.0):
         """
-        queries documents from a specific collection in the chromadb database
+        queries a specific collection in the chromadb database    
         """
         where_clause = {"tags": {"$in": tags}} if tags else None
-        return self.vdb_manager.query_collection(
+        filtered_results = self.vdb_manager.query_collection(
             collection_name=collection_name,
             query_text=query_text,
             where_clause=where_clause,
             distance_threshold=distance_threshold
-        )["documents"]
+        )
+        if not filtered_results:
+            return ""
 
-    def query_metadatas(self, collection_name, query_text, tags=None, distance_threshold=1.0):
-        """
-        queries metadata from a specific collection in the chromadb database
-        """
-        where_clause = {"tags": {"$in": tags}} if tags else None
-        return self.vdb_manager.query_collection(
-            collection_name=collection_name,
-            query_text=query_text,
-            where_clause=where_clause,
-            distance_threshold=distance_threshold
-        )["metadatas"]
+        context_pieces = []
+        for doc, meta, dist in filtered_results:
+            if collection_name == "australia":
+                # Format for Australia: citation followed by document text
+                citation = meta.get('case_title', 'No Citation Available')
+                context_pieces.append(f"{citation}\n\n{doc}")
+            elif collection_name == "singapore":
+                # Format for Singapore: case_title followed by document text
+                case_title = meta.get('case_title', 'No Title Available')
+                context_pieces.append(f"{case_title}\n\n{doc}")
+            else:
+                # Default format for any other collection
+                title = meta.get('case_title', 'No Title Available')
+                context_pieces.append(f"{title}\n\n{doc}")
+
+        return "\n\n---\n\n".join(context_pieces)
 
     def perform_phase_analysis(self, question: str, phase: str, step: int = 1, feedback: str = "", temp: float = None):
         """
@@ -109,26 +106,21 @@ class AgentClient:
             try:
                 # The collection name is now the definitive name, no prefixing.
                 print(f"Querying collection: '{collection}'...")
-                documents = self.query_documents(
+                context_text = self.query_vdb(
                     collection_name=collection,
                     query_text=question,
                     distance_threshold=distance_threshold
                 )
-                
-                if documents:
-                    print(f"Successfully retrieved {len(documents)} documents from '{collection}'.")
-                    context = f"Documents from {collection}:\n" + "\n\n".join(documents)
-                    relevant_contexts.append(context)
-                else:
-                    print(f"No relevant documents found in '{collection}' for the given question.")
+
             except Exception as e:
                 print(f"Error querying collection {collection}: {str(e)}")
         
         # Create enhanced question with retrieved context
         enhanced_question = question
-        if relevant_contexts:
+        if context_text:
             print("\nDocument retrieval successful. Enhancing question with retrieved context.")
-            context_text = "\n\n".join(relevant_contexts)
+
+
             enhanced_question = (
                 f"<ProblemScenario>\n{question}\n</ProblemScenario>\n"
                 f"<RelevantLaw>\n{context_text}\n</RelevantLaw>\n"

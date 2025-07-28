@@ -2,6 +2,9 @@ import time, tiktoken
 from openai import OpenAI
 import openai
 import os, anthropic, json
+from dotenv import dotenv_values
+
+config = dotenv_values("../.env")
 
 TOKENS_IN = dict()
 TOKENS_OUT = dict()
@@ -45,11 +48,11 @@ def query_model(model_str, prompt, system_prompt, api_key, tries=5, timeout=5.0,
     # Set the API key for the appropriate provider
     if provider == "openai":
         openai.api_key = api_key
-        os.environ["OPENAI_API_KEY"] = api_key
+        os.environ["OPENAI_API_KEY"] = api_key or config["OPENAI_API_KEY"]
     elif provider == "anthropic":
-        os.environ["ANTHROPIC_API_KEY"] = api_key
+        os.environ["ANTHROPIC_API_KEY"] = api_key or config["ANTHROPIC_API_KEY"]
     elif provider == "deepseek":
-        os.environ["DEEPSEEK_API_KEY"] = api_key
+        os.environ["DEEPSEEK_API_KEY"] = api_key or config["DEEPSEEK_API_KEY"]
     else:
         raise Exception(f"Unknown provider for model: {model_str}")
     
