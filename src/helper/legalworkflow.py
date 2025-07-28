@@ -39,15 +39,16 @@ def process_single_hypothetical(hypo_dir: str, hypo_index: int) -> tuple:
     item = extracted_data[hypo_index-1]
     
     # Create analysis text for this specific hypothetical
-    scenario_text = f"\n\n--- HYPOTHETICAL {hypo_index}: {item['file']} ---\n\n{item['scenario']}"
+    # Deleted sugar: \n\n--- HYPOTHETICAL {hypo_index}: {item['file']} ---\n\n
+    scenario_text = f"{item['scenario']}"
     
     analysis_tasks = []
     if item['questions']:
         for i, q in enumerate(item['questions']):
-            question_text = f"From {item['file']}: {q}"
-            analysis_text = f"{scenario_text}\n\nQUESTION: {question_text}"
+            question_text = f"{q}"
             analysis_tasks.append({
-                "text": analysis_text,
+                "scenario_text": scenario_text,
+                "question_text": question_text,
                 "question_index": i + 1
             })
     else:
@@ -119,12 +120,14 @@ def run_individual_hypothetical_analysis(hypo_index: int, hypo_dir: str, legal_q
                 "index": hypo_index,
                 "timestamp": datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
             },
+            "models_tested": models,
             "results_per_question": []
         }
         
         # Process each question/task for the hypothetical
         for task in analysis_tasks:
-            analysis_text = task["text"]
+            scenario_text = task["scenario_text"]
+            question_text = task.get("question_text", "scenario analysis")
             question_index = task["question_index"]
             
             print(f"\n--- Analyzing Question {question_index} ---")
@@ -156,7 +159,7 @@ def run_individual_hypothetical_analysis(hypo_index: int, hypo_dir: str, legal_q
 
             hypo_results["results_per_question"].append({
                 "question_index": question_index,
-                "question_text": analysis_text.split("QUESTION:")[1].strip() if "QUESTION:" in analysis_text else "Scenario Analysis",
+                "question_text": question_text,
                 "models": model_results_list
             })
 
@@ -169,7 +172,7 @@ def run_individual_hypothetical_analysis(hypo_index: int, hypo_dir: str, legal_q
         print(f"✗ Failed to analyze hypothetical {hypo_index}: {str(e)}")
 
 
-def run_single_model_for_hypothetical(model: str, analysis_text: str, api_keys: dict, results_dict):
+def run_single_model_for_hypothetical(model: str, scenario_text: str, question_text: str, api_keys: dict, results_dict):
     """
     Run a single model analysis for a hypothetical and store result
     """
@@ -191,7 +194,8 @@ def run_single_model_for_hypothetical(model: str, analysis_text: str, api_keys: 
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         analysis_results = {
             "legal_question": None,
-            "hypothetical": analysis_text,
+            "hypothetical": scenario_text,
+            "hypo_questions": question_text,
             "timestamp": timestamp,
             "model": model,
             "agent_outputs": {},

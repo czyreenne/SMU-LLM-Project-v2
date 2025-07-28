@@ -381,8 +381,8 @@ def convert_to_md(input_file, output_file=None, agents_config_json_path: str = "
     elif data.get("hypothetical"):
         markdown.append("## Hypothetical\n")
         # Extract just the questions if they exist
-        if "QUESTIONS:" in data["hypothetical"]:
-            questions_part = data["hypothetical"].split("QUESTIONS:")[1].strip()
+        if "<Questions>" in data["hypothetical"]:
+            questions_part = data["hypothetical"].split("<Questions>")[1].strip()
             markdown.append(questions_part + "\n")
         else:
             # Limit length for readability
