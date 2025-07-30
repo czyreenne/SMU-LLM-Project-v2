@@ -12,7 +12,7 @@ def create_individual_analysis_files(
     results: Dict[Any, Any], 
     base_output_dir: str, 
     model_name: str, 
-    hypo_name: str = None, 
+    hypo_name: str = "", 
     agent_config: dict = {}, 
     is_first_question: bool = True
 ) -> None:
@@ -54,7 +54,7 @@ def create_individual_analysis_files(
     # Generate review file with synthesis and metrics
     if results.get('final_synthesis'):
         review_file = os.path.join(model_dir, 'review.md')
-        _create_markdown('review', results, review_file, model_name, timestamp, is_first_question)
+        _create_markdown('review', results, review_file, model_name, timestamp, agent_config, is_first_question)
 
 # def _create_internal_markdown(results: Dict, output_file: str, model_name: str, timestamp: str, 
 #                             legal_question: Optional[str], hypothetical: Optional[str], agent_config:dict, is_first_question: bool = True) -> None:
@@ -288,7 +288,7 @@ def create_individual_analysis_files(
 #         f.write("\n".join(markdown))
 
 
-def convert_json_to_individual_md_files(input_file: str, base_output_dir: str = None, model_name: str = None, hypo_name: str = None, agents_config_json_path: str = "../settings/agents.json"):
+def convert_json_to_individual_md_files(input_file: str, base_output_dir: str = "", model_name: str = "", hypo_name: str = "", agents_config_json_path: str = "../settings/agents.json"):
     """
     Convert a legal analysis JSON file to separate internal, external, and review markdown files.
     
