@@ -265,7 +265,6 @@ def query_model(model_str, prompt, system_prompt, api_key, tries=5, timeout=5.0,
                         model="o1-mini-2024-09-12", messages=messages)
                 answer = completion.choices[0].message.content
             elif model_str == "o1":
-                model_str = "o1"
                 messages = [
                     {"role": "user", "content": system_prompt + prompt}]
                 if version == "0.28":
@@ -277,10 +276,11 @@ def query_model(model_str, prompt, system_prompt, api_key, tries=5, timeout=5.0,
                     completion = client.chat.completions.create(
                         model="o1-2024-12-17", messages=messages)
                 answer = completion.choices[0].message.content
-            elif model_str == "o1-preview":
-                model_str = "o1-preview"
+            elif model_str == "o4-mini":
                 messages = [
-                    {"role": "user", "content": system_prompt + prompt}]
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": prompt},
+                ]
                 if version == "0.28":
                     completion = openai.ChatCompletion.create(
                         model=f"{model_str}",  # engine = "deployment_name".
@@ -288,12 +288,29 @@ def query_model(model_str, prompt, system_prompt, api_key, tries=5, timeout=5.0,
                 else:
                     client = OpenAI()
                     completion = client.chat.completions.create(
-                        model="o1-preview", messages=messages)
+                        model="o4-mini-2025-04-16", messages=messages)
+                answer = completion.choices[0].message.content
+            elif model_str == "o3":
+                messages = [
+                    {"role": "user", "content": system_prompt + prompt}]
+                if version == "0.28":
+                    completion = openai.ChatCompletion.create(
+                        model="o3-2025-04-16",  # engine = "deployment_name".
+                        messages=messages)
+                else:
+                    client = OpenAI()
+                    completion = client.chat.completions.create(
+                        model="o3-2025-04-16", messages=messages)
                 answer = completion.choices[0].message.content
 
             try:
-                if model_str in ["o1-preview", "o1-mini", "claude-3.5-sonnet", "o1", 
-                                 "gpt-4.1", "gpt-4.1-mini", "o3", "o4-mini"]:
+                if model_str in [
+                    "gpt-4.1", "gpt-4.1-mini", 
+                    "o1-mini", "o1", 
+                    "o3", "o4-mini",
+                    "claude-3.5-sonnet",
+                    "claude-sonnet-4", "claude-opus-4", # need to doublecheck if these really use gpt-4o tokenizer
+                    ]:
                     encoding = tiktoken.encoding_for_model("gpt-4o")
                 elif model_str in ["deepseek-chat"]:
                     encoding = tiktoken.get_encoding("cl100k_base")
