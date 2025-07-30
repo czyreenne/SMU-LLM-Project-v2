@@ -41,26 +41,20 @@ def create_individual_analysis_files(
     # Extract common metadata
     timestamp = results.get('timestamp', 'N/A')
     legal_question = results.get('legal_question')
-    hypothetical = results.get('hypothetical')
     
     # just adding this check to be safe but technically its passed on
     if agent_config is None:
         agent_config = load_agent_config()
 
-    # Generate internal analysis file
-    if results.get('agent_outputs', {}).get('internal'):
-        internal_file = os.path.join(model_dir, 'internal.md')
-        _create_markdown('internal', results, internal_file, model_name, timestamp, legal_question, hypothetical, agent_config, is_first_question)
-    
-    # Generate external analysis file
-    if results.get('agent_outputs', {}).get('external'):
-        external_file = os.path.join(model_dir, 'external.md')
-        _create_markdown('external', results, external_file, model_name, timestamp, legal_question, hypothetical, agent_config, is_first_question)
+    for analysis_type in ('internal', 'external'):
+        if results.get('agent_outputs', {}).get(analysis_type):
+            outfile = os.path.join(model_dir, f'{analysis_type}.md')
+            _create_markdown(analysis_type, results, outfile, model_name, timestamp, agent_config, is_first_question)
     
     # Generate review file with synthesis and metrics
     if results.get('final_synthesis'):
         review_file = os.path.join(model_dir, 'review.md')
-        _create_markdown('review', results, review_file, model_name, timestamp, legal_question, hypothetical, is_first_question)
+        _create_markdown('review', results, review_file, model_name, timestamp, is_first_question)
 
 # def _create_internal_markdown(results: Dict, output_file: str, model_name: str, timestamp: str, 
 #                             legal_question: Optional[str], hypothetical: Optional[str], agent_config:dict, is_first_question: bool = True) -> None:
@@ -506,14 +500,47 @@ def convert_to_md(input_file, output_file=None, agents_config_json_path: str = "
     print(f"Converted {input_file} to {output_file}")
     return output_file
 
+def prettify_user_prompt(prompt: str) -> str:
+    """
+    Converts an XML-tagged LLM prompt into readable markdown sections.
+    """
+    import re
+
+    # Replace XML tags with markdown headers
+    tag_map = {
+        "ProblemScenario": "### Problem Scenario",
+        "Questions": "### Questions",
+        "RelevantLaw": "### Relevant Law",
+        "Instructions": "### Instructions"
+    }
+
+    # Remove any leading/trailing whitespace
+    prompt = prompt.strip()
+
+    # Replace tags with markdown headers
+    for tag, header in tag_map.items():
+        # Opening tag
+        prompt = re.sub(f"<{tag}>", f"\n{header}\n", prompt)
+        # Closing tag
+        prompt = re.sub(f"</{tag}>", "\n", prompt)
+
+    # Replace "---" (which is used in context to separate cases) with clearer case separator
+    prompt = prompt.replace("\n---\n", "\n--- Next Doc ---\n")
+
+    # Optionally, collapse multiple newlines
+    prompt = re.sub(r"\n{3,}", "\n\n", prompt)
+
+    # Escape any accidental markdown in the legal text (optional)
+    prompt = prompt.replace("_", "\\_").replace("*", "\\*")
+
+    return prompt
+
 def _create_markdown(
     analysis_type: str,
     results: Dict,
     output_file: str,
     model_name: str,
     timestamp: str,
-    legal_question: Optional[str],
-    hypothetical: Optional[str],
     agent_config: dict,
     is_first_question: bool = True
 ) -> None:
@@ -529,31 +556,30 @@ def _create_markdown(
     if is_first_question:
         markdown.append(f"# {analysis_type.title()} Analysis\n")
         analysis_label = f"{analysis_type.title()} Perspective"
+        system_prompt = agent_config[analysis_type].get('role_description', 'No system prompt in agents.json')
 
         markdown.append("## Metadata\n")
         markdown.append(f"**Timestamp**: {timestamp}\n")
         markdown.append(f"**Model**: {model_name}\n")
         markdown.append(f"**Analysis Type**: {analysis_label}\n")
         if analysis_type in ("internal", "external"):
-            markdown.append("\n")
-            markdown.append("## Hypothetical Scenario\n")
-            scenario_part = hypothetical.split("<Questions>")[0].strip() if hypothetical and "<Questions>" in hypothetical else hypothetical
-            if scenario_part:
-                markdown.append(scenario_part + "\n")
+            markdown.append("## System Prompt Entered \n")
+            markdown.append(system_prompt + "\n")
     else:
         markdown.append("\n---\n")  # Separator
 
     # Question/Hypothetical
-    if legal_question:
+    legal_question = results.get('legal_question', None)
+    if legal_question is not None:
         markdown.append("## Legal Question\n")
         text = legal_question
         if analysis_type == "review" and len(text) > 500:
             text = text[:500] + "..."
         markdown.append(text + "\n")
-    elif hypothetical:
-        if "<Questions>" in hypothetical:
-            questions_part = hypothetical.split("<Questions>")[1].strip().replace("</Questions>", "")
-            markdown.append(questions_part + "\n")
+    # elif hypothetical:
+    #     if "<Questions>" in hypothetical:
+    #         questions_part = hypothetical.split("<Questions>")[1].strip().replace("</Questions>", "")
+    #         markdown.append(questions_part + "\n")
 
     # Main content
     if analysis_type in ("internal", "external"):
@@ -565,7 +591,10 @@ def _create_markdown(
         for section in phases:
             if data.get(section) and data[section].get('model_resp'):
                 section_title = section.replace("_", " ").title()
-                markdown.append(f"## {section_title}\n")
+                markdown.append(f"# Phase: {section_title}\n")
+                markdown.append(f"## User Prompt Entered\n")
+                markdown.append(prettify_user_prompt(data[section]['user_prompt']))
+                markdown.append(f"## Model Response \n")
                 markdown.append(data[section]['model_resp'] + "\n")
     elif analysis_type == "review":
         final_synthesis = results.get('final_synthesis', {})
@@ -633,7 +662,6 @@ def _create_markdown(
         if consistency_score:
             consistency_status = "High" if consistency_score >= 0.9 else "Moderate" if consistency_score >= 0.7 else "Low"
             markdown.append(f"**Factual Consistency**: {consistency_status} (Score: {consistency_score:.3f})\n")
-    print(markdown, output_file)
     # Write file
     with open(output_file, file_mode, encoding='utf-8') as f:
         f.write("\n".join(markdown))
