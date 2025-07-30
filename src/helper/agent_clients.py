@@ -98,6 +98,11 @@ class AgentClient:
         collections = list(self.vdb_manager.collections.keys())
         # relevant_contexts = []
         
+        scenario_with_qn = (
+            f"<ProblemScenario>\n{scenario}\n</ProblemScenario>\n"
+            f"<Questions>\n{question}\n</Questions>\n"
+        )
+
         print("\nAttempting to retrieve relevant documents from vector database...")
         if not collections:
             print("No collections found in the vector database.")
@@ -108,33 +113,32 @@ class AgentClient:
                 print(f"Querying collection: '{collection}'...")
                 context_text = self.query_vdb(
                     collection_name=collection,
-                    query_text=question,
+                    query_text=scenario_with_qn,
                     distance_threshold=distance_threshold
                 )
 
             except Exception as e:
                 print(f"Error querying collection {collection}: {str(e)}")
         
-        # Create enhanced question with retrieved context
-        enhanced_question = question
+        # Create enhanced question with checks for any retrieved context
         if context_text:
             print("\nDocument retrieval successful. Enhancing question with retrieved context.")
-
-            enhanced_question = (
-                f"<ProblemScenario>\n{scenario}\n</ProblemScenario>\n"
-                f"<Questions>\n{question}\n</Questions>\n"
-                f"<RelevantLaw>\n{context_text}\n</RelevantLaw>\n"
-                "<Instructions>\nWrite a legal analysis of the legal issues raised by the Problem Scenario. Focus on the specific Question(s) asked at the end. Ignore legal issues outside the scope of the Question(s). For each Question, start by providing a summary of all legal issues raised. Next, for each legal issue, break down your analysis into its basic elements and address each element separately in an Issue, Law, Application, and Conclusion (ILAC) block. Here is what to do within each ILAC block: \n\n1. Issue:\n  1.1. Each legal element forms an issue in the form of a question.\n  1.2. Before going through the next issue (legal element), you must first address the Law, Application and Conclusion for that issue.\n\n2. Law:\n  2.1. For each legal element, write all the legal materials relevant to that element and cite all the legislation and case law associated with that element. You may any relevant information provided under 'Relevant Law' (delimited with XML tags) but are not limited to the above. Cite any relevant statutues, regulations, guidance or case law that are authoritative in SINGAPORE.\n\n3. Application:\n  3.1. For every Application, provide as many arguments as possible from both the plaintiff and defendant's perspectives and assess the weaknesses and strengths of their case.\n  3.2. Your argument must be based on facts and events in the 'Problem Scenario'. Assume the reader does not have access to the Problem Scenario and therefore that you must spell out all the events you are referring to.\n\n4. Conclusion:\n  4.1. For each legal element, write a 'conclusion' based on your opinion.\n  4.2. It's important to consider whether the plaintiff or defendant's argument is stronger based on the available evidence and relevant burdens of proof.\n\nUse an academic tone, concise writing, postgraduate level. Write more than 1000 and less than 2500 words.\n</Instructions>"
-            )
         else:
             print("\nNo documents retrieved. Proceeding with original question.")
-        
+            context_text = "[No relevant legal documents found]"
+                
+        user_prompt = (
+            f"{scenario_with_qn}\n"
+            f"<RelevantLaw>\n{context_text}\n</RelevantLaw>\n"
+            "<Instructions>\nWrite a legal analysis of the legal issues raised by the Problem Scenario. Focus on the specific Question(s) asked at the end. Ignore legal issues outside the scope of the Question(s). For each Question, start by providing a summary of all legal issues raised. Next, for each legal issue, break down your analysis into its basic elements and address each element separately in an Issue, Law, Application, and Conclusion (ILAC) block. Here is what to do within each ILAC block: \n\n1. Issue:\n  1.1. Each legal element forms an issue in the form of a question.\n  1.2. Before going through the next issue (legal element), you must first address the Law, Application and Conclusion for that issue.\n\n2. Law:\n  2.1. For each legal element, write all the legal materials relevant to that element and cite all the legislation and case law associated with that element. You may any relevant information provided under 'Relevant Law' (delimited with XML tags) but are not limited to the above. Cite any relevant statutues, regulations, guidance or case law that are authoritative in SINGAPORE.\n\n3. Application:\n  3.1. For every Application, provide as many arguments as possible from both the plaintiff and defendant's perspectives and assess the weaknesses and strengths of their case.\n  3.2. Your argument must be based on facts and events in the 'Problem Scenario'. Assume the reader does not have access to the Problem Scenario and therefore that you must spell out all the events you are referring to.\n\n4. Conclusion:\n  4.1. For each legal element, write a 'conclusion' based on your opinion.\n  4.2. It's important to consider whether the plaintiff or defendant's argument is stronger based on the available evidence and relevant burdens of proof.\n\nUse an academic tone, concise writing, postgraduate level. Write more than 1000 and less than 2500 words.\n</Instructions>"
+        )
+
         # Perform analysis through all phases
         results = {}
         for idx, phase in enumerate(self.phases, start=1):
             print(f"\nPerforming '{phase}' analysis (Step {idx}/{len(self.phases)})...")
             response = self.perform_phase_analysis(
-                question=enhanced_question,
+                question=user_prompt,
                 phase=phase,
                 step=idx
             )
