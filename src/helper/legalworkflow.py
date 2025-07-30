@@ -31,6 +31,7 @@ def process_single_hypothetical(hypo_dir: str, hypo_index: int) -> tuple:
         raise Exception(f"Expected output file {json_path} not found")
     
     with open(json_path, 'r') as f:
+        print(f"\nLoading pre-extracted hypotheticals from {hypo_dir}...")
         extracted_data = json.load(f)
     
     if not extracted_data or hypo_index < 1 or hypo_index > len(extracted_data):

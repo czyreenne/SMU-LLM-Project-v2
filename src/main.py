@@ -94,9 +94,11 @@ def main():
             # Do interactive selection in main process first
             processed_dir = os.path.join("output")
             os.makedirs(processed_dir, exist_ok=True)
-            print(f"\nExtracting hypotheticals from {hypothetical}...")
-            subprocess.run([sys.executable, "helper/extract_hypo.py", "--inpath", hypothetical, "--outpath", processed_dir], check=True)
+
             json_path = os.path.join(processed_dir, "extracted_data.json")
+            if not os.path.exists(json_path):
+                print(f"\nNo extracted hypotheticals detected. Now extracting hypotheticals from {hypothetical}...")
+                subprocess.run([sys.executable, "helper/extract_hypo.py", "--inpath", hypothetical, "--outpath", processed_dir], check=True)
             
             if os.path.exists(json_path):
                 with open(json_path, 'r') as f:
