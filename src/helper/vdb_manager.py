@@ -221,7 +221,7 @@ class VectorDBManager:
                          query_text: str, 
                          n_results: int = 10, 
                          where_clause: Optional[Dict[str, Any]] = None,
-                         distance_threshold: float = 1.0) -> Dict[str, List[Any]]:
+                         distance_threshold: float = 1.0) -> List[Tuple[str, Dict[str, Any], float]]:
         """
         Queries a collection for documents similar to the query text.
 
@@ -234,7 +234,7 @@ class VectorDBManager:
                                 Lower values mean higher similarity.
 
         Returns:
-            A dictionary containing the filtered and sorted results.
+            A list of tuples, where each tuple contains (document, metadata, distance).
         """
         if collection_name not in self.collections:
             raise ValueError(f"Collection '{collection_name}' is not allowed.")
@@ -247,13 +247,15 @@ class VectorDBManager:
         )
 
         # Filter results by distance threshold and sort by date
-        filtered_results = []
-        for doc, meta, dist in zip(result["documents"][0], result["metadatas"][0], result["distances"][0]):
-            if dist <= distance_threshold:
-                filtered_results.append((doc, meta, dist))
+        filtered_results: List[Tuple[str, Dict[str, Any], float]] = []
+        if result["documents"] and result["metadatas"] and result["distances"]:
+            for doc, meta, dist in zip(result["documents"][0], result["metadatas"][0], result["distances"][0]):
+                if dist <= distance_threshold:
+                    # Ensure meta is a standard dict for consistent type hinting
+                    filtered_results.append((doc, dict(meta) if meta else {}, dist))
         
         # Sort by case_date if available
-        filtered_results.sort(key=lambda x: x[1].get("case_date", ""), reverse=True)
+        filtered_results.sort(key=lambda x: str(x[1].get("decision_date", "")), reverse=True)
 
         return filtered_results
 
@@ -436,20 +438,45 @@ class VectorDBManager:
             collection_name: The name of the collection.
 
         Returns:
-            A dictionary with collection statistics.
+            A dictionary with collection statistics, including chunk and document counts.
         """
         if collection_name not in self.collections:
             raise ValueError(f"Collection '{collection_name}' is not allowed.")
         
         collection = self.collections[collection_name]
-        count = collection.count()
+        chunk_count = collection.count()
         
-        stats = {'count': count}
-        if count > 0:
+        stats: Dict[str, Any] = {'chunk_count': chunk_count, 'document_count': 0}
+        if chunk_count > 0:
+            # Note: .get() retrieves all records. This may be inefficient for very large collections.
+            try:
+                all_metadatas = collection.get(include=["metadatas"])['metadatas']
+                if all_metadatas:
+                    unique_case_ids = {meta['case_id'] for meta in all_metadatas if 'case_id' in meta}
+                    stats['document_count'] = len(unique_case_ids)
+            except Exception as e:
+                print(f"Could not calculate unique document count for '{collection_name}': {e}")
+
             sample = collection.peek(limit=1)
             stats['sample'] = sample
             
         return stats
+
+    def get_all_collection_stats(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Retrieves statistics for all managed collections.
+
+        Returns:
+            A dictionary where keys are collection names and values are their stats.
+        """
+        all_stats = {}
+        for collection_name in self.collections.keys():
+            try:
+                stats = self.get_collection_stats(collection_name)
+                all_stats[collection_name] = stats
+            except Exception as e:
+                all_stats[collection_name] = {'error': str(e)}
+        return all_stats
 
     def reset_collection(self, collection_name: str):
         """
