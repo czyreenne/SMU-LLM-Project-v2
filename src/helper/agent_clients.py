@@ -48,6 +48,17 @@ class AgentClient:
         """
         queries a specific collection in the chromadb database    
         """
+        try:
+            stats = self.vdb_manager.get_collection_stats(collection_name)
+            print("\n--- Collection Stats ---")
+            print(f"Collection Name: {collection_name}")
+            print(f"Document Count:   {stats.get('document_count', 'N/A')}")
+            print(f"Total Chunks:    {stats.get('chunk_count', 'N/A')}")
+            print("------------------------\n")
+
+        except Exception as e:
+            print(f"Failed to get stats: {e}")
+            
         where_clause = {"tags": {"$in": tags}} if tags else None
         filtered_results = self.vdb_manager.query_collection(
             collection_name=collection_name,
